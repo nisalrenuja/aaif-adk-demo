@@ -61,7 +61,7 @@ model call**, because the best demo is one that cannot flake:
 | [docs/PLAN.md](docs/PLAN.md) | the build plan, verified environment and per phase third party cost |
 | [docs/MODELS.md](docs/MODELS.md) | which model ids actually work, and the quota walls |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | day of the talk checklist and the failure table |
-| [docs/check_models.py](docs/check_models.py) | sends one real request per candidate id, run it the morning of |
+| [docs/check_models.py](docs/check_models.py) | which model ids work and how much quota is left; run `--headroom` the morning of |
 
 ## Findings worth a slide
 

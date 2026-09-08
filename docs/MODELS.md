@@ -35,12 +35,24 @@ MODEL = "gemini-3.6-flash"
 ## Re-checking before the talk
 
 ```bash
-python3 docs/check_models.py
+python3 docs/check_models.py              # fast: is each id reachable at all
+python3 docs/check_models.py --headroom   # slower: how many calls are actually left
 ```
 
-Run this the morning of the talk. It sends one real tool calling request per
-candidate id and prints what works, so a model that quietly moved overnight shows
-up before the room does.
+Run this the morning of the talk. It sends a real tool calling request per
+candidate id, so a model that quietly moved overnight shows up before the room
+does.
+
+**Use `--headroom` on the day.** A single successful request only proves a model
+has at least one call remaining, and a model with one call left is
+indistinguishable from a fresh one in the fast mode. That is not a hypothetical:
+it cost a rehearsal here, where every id reported reachable and the run then died
+at the very first agent with zero progress because the daily quota was already
+spent.
+
+`--headroom` measures what is actually left, distinguishes running out of quota
+from a model merely misbehaving mid probe, and prints a ready to paste environment
+line assigning the healthiest models to the hungriest slots.
 
 ## The quota wall, and why it shapes Phase 3 onward
 

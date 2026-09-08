@@ -9,7 +9,7 @@ This is the short version.
 pip install -r requirements.txt
 pip install litellm                        # only if showing Phase 5
 pip install "google-adk[a2a]" sse-starlette # only if showing Phase 7
-python3 docs/check_models.py               # confirm the model ids still work
+python3 docs/check_models.py --headroom     # confirm ids work AND have quota left
 ```
 
 **Enable billing on the API key.** This is the one that will end the demo. See the
@@ -18,14 +18,31 @@ quota section below.
 ## Two hours before
 
 ```bash
-python3 docs/check_models.py                     # ids can move overnight
-python3 -m agents.p3_workflow.test_budget_loop   # offline, must pass
-adk web agents                                   # all nine phases in the dropdown
+python3 docs/check_models.py --headroom           # ids can move overnight
+python3 -m agents.p3_workflow.test_budget_loop    # offline, must pass
+adk web agents                                    # all nine phases in the dropdown
 ```
 
-If `check_models.py` shows your pinned id failing, change the three constants at
-the top of `agents/p3_workflow/model.py` (and the same file in later phases) and
-rerun. It is one edit per phase folder.
+Use `--headroom` on the day, not the plain form. **Reachable is not the same as
+sufficient.** One successful request only proves a model has at least one call
+left, and on the free tier a model sitting on a single remaining call looks
+identical to a fresh one. That exact trap killed a rehearsal here: the run died at
+the first agent with no progress at all.
+
+`--headroom` spends a few calls per model to measure what is actually left, then
+prints a ready to paste line assigning the healthiest models to the hungriest
+slots, for example:
+
+```bash
+TRIP_ASSEMBLER_MODEL=gemini-3.5-flash-lite \
+TRIP_PRIMARY_MODEL=gemini-3.1-flash-lite \
+TRIP_THIRD_MODEL=gemini-3.1-flash-lite-preview \
+TRIP_SECOND_MODEL=gemini-3-flash-preview \
+python3 -m agents.p3_workflow.run_pipeline "Plan me 3 days in Kandy, budget 250 USD"
+```
+
+No file edits needed. The assembler slot gets the healthiest model because it makes
+the most calls of anything in the pipeline.
 
 ## The quota trap, stated plainly
 
@@ -64,6 +81,7 @@ Deploy: pre recorded terminal or a live URL. Never a live build.
 | `429 RESOURCE_EXHAUSTED`, `PerDay` | daily quota gone for that model | switch the model id, or billing |
 | `429`, `PerMinute` | 5 per minute burst | wait a minute, or spread across ids |
 | `404 NOT_FOUND` on a model | closed to new keys | `python3 docs/check_models.py` |
+| Run dies at the first agent, no output | daily quota already spent | `python3 docs/check_models.py --headroom`, then use the line it prints |
 | Five minute stall, no output | default retry budget | already bounded to 2 attempts in `model.py` |
 | `the greenlet library is required` | greenlet missing | `pip install greenlet` |
 | A script finishes but never exits | session service not closed | `await session_service.close()` |
