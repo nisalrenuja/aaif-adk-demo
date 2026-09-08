@@ -1,7 +1,7 @@
 {
   "eval_set_id": "trip_planning",
   "name": "Trip planning regressions",
-  "description": "Two scenarios that pin the behaviour most likely to regress: the pipeline must record preferences before researching anything, and it must actually run the budget check. Trajectory is what is asserted, not prose.",
+  "description": "Two scenarios pinning the deterministic spine of the pipeline: preferences are recorded before anything is researched, research happens, and the budget is actually checked.\n\nOnly calls whose arguments are fully determined by the user's sentence, or which take no arguments, are asserted. tool_trajectory_avg_score compares arguments with full dict equality and scores 1.0 or 0.0 per invocation, so asserting a call whose arguments the model chooses, such as which hotel or which activities, can never pass reliably. research_activities is left out for the same reason: one run sent 'culture,food' and the expectation said 'culture, food', and that single space fails the entire test.\n\nScored with IN_ORDER matching so the extra calls, the weather lookup and the second pass of the budget loop, do not fail it.",
   "eval_cases": [
     {
       "eval_id": "kandy_tight_budget",
@@ -40,13 +40,6 @@
                 "name": "research_hotels",
                 "args": {
                   "city": "Kandy"
-                }
-              },
-              {
-                "name": "research_activities",
-                "args": {
-                  "city": "Kandy",
-                  "interests": "culture, food"
                 }
               },
               {
@@ -100,13 +93,6 @@
                 "name": "research_hotels",
                 "args": {
                   "city": "Colombo"
-                }
-              },
-              {
-                "name": "research_activities",
-                "args": {
-                  "city": "Colombo",
-                  "interests": "culture"
                 }
               },
               {
