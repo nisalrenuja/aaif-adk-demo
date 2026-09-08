@@ -16,6 +16,10 @@ python-dotenv>=1.0
 httpx>=0.27
 
 # --- Optional extras, installed per phase ---
+# Phase 8 (adk eval). Without it the command exits immediately with
+#   "Eval module is not installed, please install via pip install google-adk[eval]"
+# It pulls in pandas, tabulate and rouge-score, so it is a big install.
+#   pip install "google-adk[eval]"
 # Phase 5 (LiteLLM, points one agent at Claude or GPT):
 #   pip install litellm
 # Phase 7 (A2A, exposes one agent over the wire):

@@ -36,6 +36,17 @@ adk web agents --session_service_uri="sqlite:///./trip.db"
 
 ## Test it: `adk eval`
 
+**Install the extra first.** This is not in the base package, and without it the
+command exits immediately:
+
+```
+Error: Eval module is not installed, please install via `pip install "google-adk[eval]"`
+```
+
+```bash
+pip install "google-adk[eval]"
+```
+
 ```bash
 adk eval agents/p8_production agents/p8_production/trip_planning.evalset.json \
     --config_file_path agents/p8_production/test_config.json \
@@ -74,6 +85,32 @@ adk eval agents/p8_production \
 **Cost warning.** Each case runs the whole pipeline, so the full eval set is
 roughly 30 model calls. On a free key that exceeds the daily quota on its own. Use
 the single case form while rehearsing. See [docs/MODELS.md](../../docs/MODELS.md).
+
+**`adk eval` overrides your retry settings.** This one is worth a slide of its own,
+because it silently undoes work you did earlier. On startup the eval runner
+registers its own plugin:
+
+```
+Plugin 'ensure_retry_options' registered.
+```
+
+That replaces the bounded retry budget `build_model()` sets in `model.py`. Under
+`adk eval` a rate limited key produces this instead:
+
+```
+Retrying ... in 5.03 seconds  as it raised ClientError: 429
+Retrying ... in 10.1 seconds
+Retrying ... in 20.2 seconds
+Retrying ... in 40.6 seconds
+Retrying ... in 80.4 seconds
+Retrying ... in 120 seconds
+```
+
+Nearly five minutes of exponential backoff, which is exactly the stall the
+`attempts=2` and 25 second timeout in `model.py` exist to prevent. **Agent level
+retry configuration does not apply during eval.** Budget real time for an eval run
+on a constrained key, and never put one in front of a live audience without having
+run it that morning.
 
 ## Ship it: `adk deploy cloud_run`
 
@@ -123,11 +160,23 @@ Everything else in these eight phases runs on a free key and a laptop.
 returns every one and each root agent instantiates. The eval set and the config
 both validate against ADK's own schemas.
 
-**Not verified.** The eval set has not been executed, because a full run exceeds
-the free daily quota. The Cloud Run deploy has not been run, because gcloud is not
-installed here and the project has no billing. Both commands are correct as
-written; neither has been observed to succeed. Do one rehearsal of each before the
-talk, or present them from a slide and say so.
+**Partly verified.** `adk eval` was executed. It loaded the agent, parsed the
+OpenAPI toolset, ran the pipeline through 8 successful model calls and made a live
+open-meteo request returning `200 OK`, then hit the free tier daily quota before
+it could finish and score. So the eval set, the config, the agent wiring and the
+runner all work together; what has not been observed is a completed run with a
+printed score. Run one case on a key with quota before the talk:
+
+```bash
+adk eval agents/p8_production \
+    "agents/p8_production/trip_planning.evalset.json:kandy_tight_budget" \
+    --config_file_path agents/p8_production/test_config.json
+```
+
+**Not verified.** The Cloud Run deploy has not been run, because gcloud is not
+installed here and the project has no billing. The command is correct as written
+but has not been observed to succeed. Rehearse it, or present it from a slide and
+say so.
 
 ## Next
 
