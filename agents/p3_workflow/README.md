@@ -147,41 +147,99 @@ researcher killed the entire pipeline, because `ParallelAgent` uses an
 
 The other two researchers finished normally and the pipeline carried on.
 
-## What one run actually costs
+## What one run costs, and how it got halved
 
 ```bash
 python3 -m agents.p3_workflow.measure_cost
 ```
 
 Every ADK event carries `usage_metadata`, so this is measured rather than guessed.
-One full run, with the loop taking two passes:
+That matters, because the first measurement immediately showed the cost was not
+where anyone would have looked for it.
 
-| Agent | Calls | Input tokens | Output |
+### The measurement
+
+Same scenario, same 17 model calls, before and after one afternoon of tuning:
+
+| | Before | After | Change |
 | --- | --- | --- | --- |
-| `itinerary_assembler` | 4 | 20,232 | 987 |
-| `budget_checker` | 4 | 13,474 | 94 |
-| `presenter` | 1 | 4,558 | 303 |
-| `activity_researcher` | 2 | 1,362 | 56 |
-| `flight_researcher` | 2 | 1,359 | 59 |
-| `hotel_researcher` | 2 | 1,128 | 37 |
-| `preference_agent` | 2 | 994 | 72 |
-| **Total** | **17** | **43,107** | **1,608** |
+| Input tokens | 43,107 | **18,414** | **57% less** |
+| Output tokens | 1,608 | 1,442 | 10% less |
+| Thinking tokens | 4,177 | 4,527 | slightly more |
+| **Billable total** | **48,892** | **24,383** | **50% less** |
 
-Plus 4,177 thinking tokens. **48,892 billable tokens for one run.**
+Per agent, where the input tokens went:
 
-Two things worth saying out loud:
+| Agent | Before | After | Cut |
+| --- | --- | --- | --- |
+| `itinerary_assembler` | 20,232 | 11,603 | 43% |
+| `budget_checker` | 13,474 | 2,671 | **80%** |
+| `presenter` | 4,558 | 642 | 86% |
+| `activity_researcher` | 1,362 | 941 | 31% |
+| `flight_researcher` | 1,359 | 881 | 35% |
+| `hotel_researcher` | 1,128 | 786 | 30% |
+| `preference_agent` | 994 | 890 | unchanged, by design |
 
-**The loop is 78% of your input tokens.** The assembler and budget checker run
-twice and carry the full state each time. If you ever need to make an agent
-pipeline cheaper, the loop is where you look first, not the number of agents.
+### The one line that did it
 
-**Input dwarfs output, 27 to 1.** That is normal for agent pipelines and it is good
-news, because input is the cheaper half of every price sheet. It also means context
-size, not verbosity, is what drives your bill.
+```python
+include_contents="none",
+```
 
-For the free tier, what matters is calls per model, not tokens. This run spread 17
-calls over four models, worst case 6 on one model, so roughly **3 runs a day**
-before that model hits its 20 per day cap. The script prints that verdict for you.
+Seven of these agents read every input they use from state, through the
+`{preferences?}` style templating in their instructions. They were also being sent
+the entire conversation history on every call, and none of them looked at it.
+
+`budget_checker` is the clearest case: **13,474 input tokens down to 2,671**, an
+80% cut, for an agent whose whole job is calling one deterministic tool. It was
+paying to re-read the transcript four times in order to say "call check_budget".
+
+ADK still passes each turn's own function calls and results under
+`include_contents="none"`, so tool use keeps working. Only history is dropped.
+
+`preference_agent` deliberately keeps the default, because it is the one agent
+that genuinely needs to read what the traveller typed.
+
+### The model swap did less than you would think
+
+The defaults also moved to lite tier ids. That lowers the price per token but
+changes no token counts, and it is the more obvious of the two moves.
+**The config line saved more than the cheaper models did.** Worth a slide: before
+you shop for a cheaper model, check whether you are paying to send context nobody
+reads.
+
+### Two things the numbers say
+
+**The loop dominates.** The assembler and budget checker run twice and carry state
+each time. Even after tuning they are 78% of input. When an agent pipeline needs to
+get cheaper, look at what repeats, not at how many agents you have.
+
+**Input dwarfs output, roughly 13 to 1 after tuning, 27 to 1 before.** That is
+normal for agent pipelines, and it means context size rather than verbosity drives
+the bill. It is also good news, since input is the cheaper half of every price
+sheet.
+
+### The regression this nearly shipped
+
+The first optimised run was 50% cheaper, produced a correct itinerary, and
+**broke the demo**. The assembler started second guessing itself inside a single
+turn, calling `choose_hotel` twice before any budget check ran, so the loop
+completed in one pass and the refinement step became invisible. Cheaper, correct,
+and useless for teaching the thing this phase exists to teach.
+
+The fix was to tell the assembler to make exactly one pass and let the budget gate
+decide. That is better design as well as a better demo: the agent proposes, the
+deterministic gate disposes.
+
+The lesson generalises. **A cost optimisation that is measured only in tokens can
+pass every check and still ruin the behaviour you cared about.** Re-run the thing
+end to end and look at what it does, not only at what it spent.
+
+### Free tier
+
+Unchanged at roughly **3 runs a day**, because that is governed by calls per model,
+not tokens, and the call count did not move. Raising it means more distinct model
+ids, not cheaper ones. On a paid key, you now pay half.
 
 ## Things that will bite you
 

@@ -66,9 +66,14 @@ Both were hit during this build:
 
 The per day limit is the one that ends a rehearsal. Measured, not estimated: one
 full Phase 3 run with the budget loop taking two passes costs **17 model calls and
-48,892 billable tokens**, spread across four models with a worst case of 6 calls on
+24,383 billable tokens**, spread across four models with a worst case of 6 calls on
 a single model. That gives roughly **3 full runs a day** before the busiest model
 hits its cap.
+
+That token figure was 48,892 before tuning. Setting `include_contents="none"` on
+the agents that read their inputs from state rather than from conversation history
+halved it, without changing the call count or the output. The Phase 3 README has
+the before and after per agent.
 
 Run `python3 -m agents.p3_workflow.measure_cost` to see the breakdown for yourself,
 including which agent is costing you what.
