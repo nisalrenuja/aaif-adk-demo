@@ -1,0 +1,127 @@
+{
+  "eval_set_id": "trip_planning",
+  "name": "Trip planning regressions",
+  "description": "Two scenarios that pin the behaviour most likely to regress: the pipeline must record preferences before researching anything, and it must actually run the budget check. Trajectory is what is asserted, not prose.",
+  "eval_cases": [
+    {
+      "eval_id": "kandy_tight_budget",
+      "conversation": [
+        {
+          "invocation_id": "kandy-tight-1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Plan me 3 days in Kandy, budget 250 USD, I like culture and food."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "A three day Kandy itinerary covering cultural and food activities, with a hotel and a total cost that is within the 250 USD budget."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "save_preferences",
+                "args": {
+                  "city": "Kandy",
+                  "days": 3,
+                  "budget_usd": 250,
+                  "interests": "culture, food",
+                  "origin": "none"
+                }
+              },
+              {
+                "name": "research_hotels",
+                "args": {
+                  "city": "Kandy"
+                }
+              },
+              {
+                "name": "research_activities",
+                "args": {
+                  "city": "Kandy",
+                  "interests": "culture, food"
+                }
+              },
+              {
+                "name": "check_budget",
+                "args": {}
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "trip_pipeline",
+        "user_id": "eval_traveller",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "colombo_comfortable_budget",
+      "conversation": [
+        {
+          "invocation_id": "colombo-comfortable-1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "I want 2 days in Colombo with a 900 USD budget. I am mostly interested in culture."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "A two day Colombo itinerary of cultural activities with a hotel, comfortably under the 900 USD budget."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "save_preferences",
+                "args": {
+                  "city": "Colombo",
+                  "days": 2,
+                  "budget_usd": 900,
+                  "interests": "culture",
+                  "origin": "none"
+                }
+              },
+              {
+                "name": "research_hotels",
+                "args": {
+                  "city": "Colombo"
+                }
+              },
+              {
+                "name": "research_activities",
+                "args": {
+                  "city": "Colombo",
+                  "interests": "culture"
+                }
+              },
+              {
+                "name": "check_budget",
+                "args": {}
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "trip_pipeline",
+        "user_id": "eval_traveller",
+        "state": {}
+      }
+    }
+  ]
+}

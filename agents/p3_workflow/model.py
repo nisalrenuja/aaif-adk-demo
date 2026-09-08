@@ -1,0 +1,77 @@
+"""Models for the pipeline, spread deliberately across ids.
+
+Two reasons this file is not just a string constant.
+
+**Bounded retries.** A transient 503 with the default retry budget turned one
+question into a five minute stall during this build. `attempts=2` makes a failure
+visible in seconds instead.
+
+**Quota headroom.** The free tier allows 5 requests per minute *per model*. A
+parallel fan out fires three agents at once, and a refinement loop fires several
+more, so a single pipeline run is comfortably 10 to 15 calls. Pointing the three
+researchers at three different model ids roughly triples the free tier headroom,
+because the quota is counted per model.
+
+That is a workaround, and it is also a real technique. Phase 5 makes the same
+argument for a better reason: different jobs genuinely want different models.
+"""
+
+from __future__ import annotations
+
+import os
+
+from google.adk.models import Gemini
+from google.genai import types
+
+# All three verified working with function calling. See docs/MODELS.md.
+#
+# Overridable from the environment, because the free tier's daily quota is per
+# model and burns out per model. When one id starts returning 429 PerDay, you do
+# not want to be editing six files with an audience watching:
+#
+#     TRIP_PRIMARY_MODEL=gemini-3.8-flash python3 -m agents.p3_workflow.run_pipeline "..."
+#
+# `python3 docs/check_models.py` tells you which ids still have headroom.
+PRIMARY_MODEL_ID = os.environ.get("TRIP_PRIMARY_MODEL", "gemini-3.6-flash")
+SECOND_MODEL_ID = os.environ.get("TRIP_SECOND_MODEL", "gemini-3.7-flash")
+THIRD_MODEL_ID = os.environ.get("TRIP_THIRD_MODEL", "gemini-3.5-flash")
+
+# The assembler runs inside the refinement loop and makes the most calls of any
+# agent here: choose a hotel, then one call per day, then a summary, then possibly
+# all of that again on the next pass. That is comfortably more than 5 requests in a
+# minute, which is the free tier's per minute limit for a single model, so on a
+# free key it rate limits itself even when nothing else is running.
+#
+# It therefore gets its own id when you give it one. Defaults to sharing SECOND,
+# which is the right default on a paid key where none of this matters.
+ASSEMBLER_MODEL_ID = os.environ.get("TRIP_ASSEMBLER_MODEL", SECOND_MODEL_ID)
+
+
+# Bounding retry *attempts* is not enough. An overloaded model does not refuse
+# quickly, it hangs: a 503 on gemini-3.8-flash took 72 seconds to come back during
+# this build, so two attempts plus backoff was a five minute stall with no output.
+# A request timeout is what actually caps the damage. 25 seconds is generous for a
+# Flash model and short enough to notice on stage.
+TIMEOUT_MS = 25_000
+
+
+def build_model(model_id: str = PRIMARY_MODEL_ID) -> Gemini:
+    """Return a Gemini model that fails fast rather than hanging.
+
+    Two guards, and you need both:
+
+    - `attempts=2` so a transient failure is retried once and then given up on.
+    - `timeout` so a single attempt cannot hang for over a minute on its own.
+    """
+    retry = types.HttpRetryOptions(attempts=2, initial_delay=1)
+    return Gemini(
+        model=model_id,
+        retry_options=retry,
+        # client_kwargs is passed straight to the genai Client, which is the only
+        # way to reach the request timeout from here.
+        client_kwargs={
+            "http_options": types.HttpOptions(
+                timeout=TIMEOUT_MS, retry_options=retry
+            )
+        },
+    )

@@ -1,0 +1,25 @@
+# Core. Everything in phases 0 through 3, 6 and 8 runs on this alone.
+# Demoed on google-adk 2.5.0, Python 3.12. Requires Python 3.10 or newer.
+google-adk>=2.0.0,<3.0.0
+
+# Phase 2 swaps InMemorySessionService for a SQLite backed DatabaseSessionService.
+# greenlet is not optional: SQLAlchemy's async engine fails at runtime without it,
+# with "the greenlet library is required to use this function".
+sqlalchemy>=2.0
+aiosqlite>=0.19
+greenlet>=3.0
+
+# Loads .env for the standalone scripts.
+python-dotenv>=1.0
+
+# Phase 4 calls an OpenAPI weather endpoint.
+httpx>=0.27
+
+# --- Optional extras, installed per phase ---
+# Phase 5 (LiteLLM, points one agent at Claude or GPT):
+#   pip install litellm
+# Phase 7 (A2A, exposes one agent over the wire):
+#   pip install "google-adk[a2a]" sse-starlette
+#   sse-starlette is listed separately on purpose: the a2a extra does not pull it
+#   in, and without it the A2A server dies at startup with
+#   "ModuleNotFoundError: No module named 'sse_starlette'".

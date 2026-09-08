@@ -1,0 +1,178 @@
+# ADK Live Demo: Build Plan
+
+A nine phase, branch per phase build of a multi agent trip planner using Google ADK.
+Every phase adds one ADK concept. The final branch contains every phase, so the repo
+doubles as a reference after the talk.
+
+## Verified environment
+
+Checked on this machine before writing a line of code:
+
+| Item | Value |
+| --- | --- |
+| Python | 3.12.2 |
+| google-adk | 2.5.0 |
+| adk CLI | present (`web`, `eval`, `deploy`, `run`, `api_server`) |
+| sqlalchemy | 2.0.39 (so `DatabaseSessionService` works) |
+| litellm | not installed (Phase 5 installs it) |
+| a2a-sdk | not installed (Phase 7 installs it) |
+| gcloud | not installed (Phase 8 deploy needs it) |
+| API key | not set (see Blockers) |
+
+## Blockers and third party involvement
+
+### Hard blocker, resolved: an API key
+
+Nothing that talks to a model runs without a Gemini API key. A key was supplied
+during the build and `.env` is in place (gitignored). Verified working.
+
+### Hard blocker, still open: free tier quota
+
+The free tier allows **20 requests per day, per model**, and one Phase 3 pipeline
+run costs 10 to 15 model calls. That is roughly four full runs a day across the
+three model ids this repo uses, and it was hit repeatedly while building.
+
+**Enable billing on the key before the talk.** This is the one remaining thing that
+can end the demo, and no amount of code works around it. Full detail in
+[MODELS.md](MODELS.md).
+
+### Third party by phase
+
+| Phase | Third party | Cost | Offline fallback |
+| --- | --- | --- | --- |
+| 0 Seed | Gemini API | free tier | none, needs the key |
+| 1 Delegation | Gemini API | free tier | none |
+| 2 State | Gemini API, local SQLite file | free | SQLite is local |
+| 3 Workflow | Gemini API | free | none |
+| 4 Rich tools | `google_search` (same key), open-meteo OpenAPI (no key) | free | cached JSON fixture |
+| 5 LiteLLM | `litellm` package plus an Anthropic or OpenAI key | small paid | skip, show code on slide |
+| 6 Safety | Gemini API | free | none |
+| 7 A2A | `a2a-sdk`, two local processes | free | both processes are local |
+| 8 Production | `adk web` and `adk eval` are free. `adk deploy cloud_run` needs a GCP project with billing and the gcloud CLI | billing | pre recorded terminal plus a live URL |
+
+### Known sharp edges, already verified
+
+1. **Workflow agents are deprecated in ADK 2.5.0.** `SequentialAgent`, `ParallelAgent`
+   and `LoopAgent` each emit `DeprecationWarning: ... deprecated in favor of Workflow`.
+   They still run correctly. Phase 3 therefore ships both: `agent.py` uses the three
+   classic primitives because they teach the concept most clearly, and
+   `workflow_graph.py` builds the same pipeline on the new graph runtime. The slide
+   says which is which. Warnings are silenced in the phase package so the terminal
+   stays clean on stage.
+2. **`Workflow` cannot yet be an `LlmAgent` sub agent.** So the graph variant is a
+   separate root, not a swap inside the concierge.
+3. **ADK 2.5.0 defaults to `gemini-3.5-flash`.** We pin `gemini-2.5-flash` explicitly
+   in one constants module so a single edit changes every agent, and the slide names
+   the exact id that was tested.
+4. **Built in tools mix cleanly now.** ADK 2.5 auto wraps `google_search` when an
+   agent also holds function tools, so Phase 4 does not need the old AgentTool
+   workaround. Verified by construction.
+
+## Branch strategy
+
+Each branch is cut from the previous one, so the last branch holds everything.
+
+```
+main                    scaffolding, plan, requirements, env example
+  phase-0-seed          one agent, one function tool
+    phase-1-delegation  sub agents plus root concierge
+      phase-2-state     session state, InMemory then SQLite
+        phase-3-workflow    Sequential + Parallel + Loop, plus graph variant
+          phase-4-tools     google_search plus an OpenAPI weather tool
+            phase-5-models  LiteLLM on one agent
+              phase-6-safety    confirmation gate on book_trip
+                phase-7-a2a     remote agent over A2A
+                  phase-8-production  adk web, eval set, cloud run
+```
+
+`main` is merged forward at the end so `main` also has the full project.
+
+## Repo layout
+
+```
+agents/                 the adk web agents directory
+  p0_seed/
+    __init__.py
+    agent.py            root_agent lives here
+    mock_data.py        self contained fake data
+    README.md           what this phase teaches
+  p1_delegation/
+  p2_state/
+  p3_workflow/
+  p4_tools/
+  p5_models/
+  p6_safety/
+  p7_a2a/
+  p8_production/
+docs/PLAN.md
+README.md
+requirements.txt
+.env.example
+```
+
+Each phase package is deliberately self contained, duplicated mock data included.
+A person can copy one folder out of the repo and it runs. That matters more for a
+teaching repo than avoiding duplication.
+
+Run every phase with a single command from the repo root:
+
+```
+adk web agents
+```
+
+The dropdown lists all phases, which makes the "watch it grow" story easy to tell.
+
+## Stage plan
+
+Spine, about 20 to 25 minutes: phases 1, 2, 3, 6, 8.
+Flex, only if the room is fast: phases 4, 5, 7. Otherwise flash the code on a slide
+and say it is in the repo.
+Deploy: show a pre recorded terminal or a live URL, never wait on a build.
+
+## Slide accuracy guards
+
+- Pin `google-adk>=2.0.0`, and say you demoed on 2.5.0.
+- Name the exact model id, `gemini-2.5-flash`, not an alias.
+- Say Python 3.10 or newer.
+- State that the workflow agents are deprecated as of 2.5 and that `Workflow` is the
+  forward path. Owning that beats being corrected from the audience.
+
+
+## What changed once the code was written
+
+The plan above survived contact, with four additions that were not foreseeable from
+the docs.
+
+**Model availability was the biggest surprise.** The pin moved from
+`gemini-2.5-flash` to `gemini-3.6-flash` after the first real request came back
+404. `docs/MODELS.md` and `docs/check_models.py` exist entirely because of this.
+
+**Quota shaped the architecture.** The three parallel researchers point at three
+different model ids because the free quota is counted per model. That started as a
+workaround and turned into a genuine argument for Phase 5.
+
+**Every phase gained something runnable without a model call.** `inspect_tool.py`,
+`show_state.py`, `test_budget_loop.py`, `show_models.py` and the seeded
+`run_booking.py`. On a quota limited key these are what make the talk safe, and
+they happen to be better teaching than a live run anyway.
+
+**Three undocumented dependency gaps.** `greenlet` for the SQLite session service,
+`sse-starlette` for the A2A server, and `await service.close()` or scripts hang
+after finishing. All three cost real time and all three are now in
+`requirements.txt` or a README.
+
+## What is verified and what is not
+
+| Phase | Live verified |
+| --- | --- |
+| 0 Seed | tool declaration generation, offline |
+| 1 Delegation | structure loads; routing not run live |
+| 2 State | full run, both processes, SQLite persistence across restart |
+| 3 Workflow | loop exit condition offline; full pipeline blocked on daily quota |
+| 4 Tools | OpenAPI weather end to end with live data; `google_search` not run live |
+| 5 Models | fallback path only, no third party key was available |
+| 6 Safety | both approve and reject paths, end to end |
+| 7 A2A | server, agent card and remote call end to end, plus the fallback |
+| 8 Production | `adk web` loads all nine phases; eval set and deploy not executed |
+
+Every gap is stated in the relevant phase README rather than left implicit.
