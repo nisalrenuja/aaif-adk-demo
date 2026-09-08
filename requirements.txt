@@ -15,6 +15,10 @@ python-dotenv>=1.0
 # Phase 4 calls an OpenAPI weather endpoint.
 httpx>=0.27
 
+# Phase 7 serves the local expert. google-adk pulls uvicorn in transitively, but
+# local_expert_service/server.py imports it directly, so it is declared here.
+uvicorn>=0.30
+
 # --- Optional extras, installed per phase ---
 # Phase 8 (adk eval). Without it the command exits immediately with
 #   "Eval module is not installed, please install via pip install google-adk[eval]"

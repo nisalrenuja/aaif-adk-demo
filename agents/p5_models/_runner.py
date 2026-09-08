@@ -10,10 +10,9 @@ import json
 import warnings
 
 from dotenv import load_dotenv
-from google.genai import types
-
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.genai import types
 
 warnings.filterwarnings("ignore", message=r".*deprecated in favor of Workflow.*")
 warnings.filterwarnings("ignore", message=r".*EXPERIMENTAL.*")

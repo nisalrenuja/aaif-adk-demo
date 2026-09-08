@@ -1,0 +1,36 @@
+# Lint configuration. There is no build here on purpose: this repo is a set of
+# runnable teaching examples, not an installable package. Each phase folder is
+# meant to be copied out and run on its own.
+
+[tool.ruff]
+target-version = "py310"          # the minimum this project supports
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused imports, undefined names
+    "I",    # import sorting
+    "UP",   # pyupgrade: outdated syntax
+    "B",    # bugbear: likely bugs
+    "SIM",  # simplifiable code
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Mock inventory is a data table. One record per line is easier to read and to
+# edit than a wrapped dict, which matters more here than the column limit.
+"agents/*/mock_data.py" = ["E501"]
+"local_expert_service/agent.py" = ["E501"]
+# The seeded trip in run_booking is a data table too.
+"agents/*/run_booking.py" = ["E501", "E402"]
+
+# These modules call warnings.filterwarnings() before importing ADK, on purpose,
+# so the stage terminal stays readable. That is what E402 is complaining about.
+"agents/*/agent.py" = ["E402"]
+"agents/*/_runner.py" = ["E402"]
+"agents/*/show_models.py" = ["E402"]
+"agents/*/measure_cost.py" = ["E402"]
+"agents/*/workflow_graph.py" = ["E402"]
+"agents/*/remote.py" = ["E402"]
+"local_expert_service/server.py" = ["E402"]

@@ -11,8 +11,14 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from .tools import check_budget, choose_hotel, research_activities, research_hotels
-from .tools import save_preferences, set_itinerary_day
+from .tools import (
+    check_budget,
+    choose_hotel,
+    research_activities,
+    research_hotels,
+    save_preferences,
+    set_itinerary_day,
+)
 
 
 class FakeContext:

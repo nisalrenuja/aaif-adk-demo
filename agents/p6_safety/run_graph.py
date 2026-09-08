@@ -16,5 +16,7 @@ from ._runner import run
 from .workflow_graph import root_agent
 
 if __name__ == "__main__":
-    request = " ".join(sys.argv[1:]) or "Plan me 3 days in Kandy, budget 250 USD, I like culture and food"
+    request = " ".join(sys.argv[1:]) or (
+        "Plan me 3 days in Kandy, budget 250 USD, I like culture and food"
+    )
     asyncio.run(run(request, node=root_agent))

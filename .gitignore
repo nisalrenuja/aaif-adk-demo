@@ -7,3 +7,5 @@ venv/
 *.sqlite3
 .adk/
 .DS_Store
+.ruff_cache/
+.pytest_cache/

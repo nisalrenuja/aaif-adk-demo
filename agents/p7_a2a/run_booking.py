@@ -20,11 +20,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from dotenv import load_dotenv
-from google.genai import types
-
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.tool_confirmation import ToolConfirmation
+from google.genai import types
 
 from .agent import booking_agent
 

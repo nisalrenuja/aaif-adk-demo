@@ -61,11 +61,18 @@ trajectory**, not the prose:
 | `kandy_tight_budget` | preferences are recorded before anything is researched, and the budget is actually checked |
 | `colombo_comfortable_budget` | the same shape holds for a different city and a budget that fits on the first pass |
 
-`test_config.json` sets the thresholds:
+`test_config.json` sets the thresholds and, importantly, the match type:
 
 ```json
-{"criteria": {"tool_trajectory_avg_score": 0.6, "response_match_score": 0.2}}
+{
+  "criteria": {
+    "tool_trajectory_avg_score": {"threshold": 1.0, "match_type": "IN_ORDER"},
+    "response_match_score": 0.2
+  }
+}
 ```
+
+`IN_ORDER` is doing real work there. See the section below on why.
 
 **Assert trajectory, not wording.** The final response of an LLM pipeline varies
 between runs and always will. What must not vary is that `save_preferences` runs
@@ -111,6 +118,44 @@ Nearly five minutes of exponential backoff, which is exactly the stall the
 retry configuration does not apply during eval.** Budget real time for an eval run
 on a constrained key, and never put one in front of a live audience without having
 run it that morning.
+
+## Why the eval set asserts so little
+
+The first completed run scored `tool_trajectory_avg_score: 0.0`. Three reasons,
+all worth knowing before you write your first eval set.
+
+**The metric is binary, not partial.** Each invocation scores 1.0 or 0.0. There is
+no partial credit for getting most of the trajectory right.
+
+**It defaults to `EXACT` matching**, which forbids any extra tool call. The real
+pipeline makes ten calls including a weather lookup and a second pass of the budget
+loop, so anything short of the full list fails. `IN_ORDER` fixes that: the expected
+calls must appear in order, and extra calls in between are fine.
+
+**It compares arguments with full dict equality.** This is the one that bites. The
+agent called:
+
+```
+research_activities  {"city": "Kandy", "interests": "culture,food"}
+```
+
+and the eval set expected `"culture, food"`. **One space failed the entire test.**
+
+The consequence is a design rule: **assert the deterministic spine, not the whole
+trajectory.**
+
+```
+save_preferences  ->  research_hotels  ->  check_budget
+```
+
+Those three have arguments that come straight from the traveller's sentence, or no
+arguments at all. Everything the model chooses is left out: which hotel, which
+activities, how it reformats an interests string. Those change between runs, and an
+eval that pins them is not a regression test, it is a snapshot that fails the next
+time the model picks a different hotel.
+
+What is still asserted is what actually matters: preferences are recorded before
+anything is researched, research happens, and the budget really is checked.
 
 ## Ship it: `adk deploy cloud_run`
 
@@ -160,18 +205,20 @@ Everything else in these eight phases runs on a free key and a laptop.
 returns every one and each root agent instantiates. The eval set and the config
 both validate against ADK's own schemas.
 
-**Partly verified.** `adk eval` was executed. It loaded the agent, parsed the
-OpenAPI toolset, ran the pipeline through 8 successful model calls and made a live
-open-meteo request returning `200 OK`, then hit the free tier daily quota before
-it could finish and score. So the eval set, the config, the agent wiring and the
-runner all work together; what has not been observed is a completed run with a
-printed score. Run one case on a key with quota before the talk:
+**Verified.** `adk eval` runs and passes:
 
-```bash
-adk eval agents/p8_production \
-    "agents/p8_production/trip_planning.evalset.json:kandy_tight_budget" \
-    --config_file_path agents/p8_production/test_config.json
 ```
+Eval Run Summary
+trip_planning:
+  Tests passed: 1
+  Tests failed: 0
+
+tool_trajectory_avg_score   1.0    PASSED
+response_match_score        0.29   PASSED
+```
+
+Getting there took three attempts and taught more than a green first run would
+have. See the next section.
 
 **Not verified.** The Cloud Run deploy has not been run, because gcloud is not
 installed here and the project has no billing. The command is correct as written

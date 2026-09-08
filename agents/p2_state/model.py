@@ -16,20 +16,35 @@ visible error you can talk over while you switch to the fallback id below.
 
 from __future__ import annotations
 
+import os
+
 from google.adk.models import Gemini
 from google.genai import types
 
 # Verified working with function calling on 2026-09-08. See docs/MODELS.md.
-MODEL_ID = "gemini-3.6-flash"
+# Overridable from the environment, so a model that runs out of daily quota does
+# not mean editing a file with an audience watching. `python3 docs/check_models.py
+# --headroom` prints a ready to paste line.
+MODEL_ID = os.environ.get("TRIP_PRIMARY_MODEL", "gemini-3.5-flash-lite")
 
-# If MODEL_ID starts returning 503 on the day, change this one line. 3.7 and 3.5
-# were both healthy when 3.8 was overloaded, so the failures rotate.
-FALLBACK_MODEL_ID = "gemini-3.7-flash"
+# Bounding retry attempts is not enough. An overloaded model does not refuse
+# quickly, it hangs: a 503 took 72 seconds to come back during this build, so two
+# attempts plus backoff was a five minute stall with no output. The request
+# timeout is what actually caps the damage.
+TIMEOUT_MS = 25_000
 
 
 def build_model(model_id: str = MODEL_ID) -> Gemini:
-    """Return the demo model with a short, predictable retry budget."""
+    """Return the demo model, bounded so it fails fast rather than hanging."""
+    retry = types.HttpRetryOptions(attempts=2, initial_delay=1)
     return Gemini(
         model=model_id,
-        retry_options=types.HttpRetryOptions(attempts=2, initial_delay=1),
+        retry_options=retry,
+        # client_kwargs goes straight to the genai Client, which is the only way
+        # to reach the request timeout from here.
+        client_kwargs={
+            "http_options": types.HttpOptions(
+                timeout=TIMEOUT_MS, retry_options=retry
+            )
+        },
     )

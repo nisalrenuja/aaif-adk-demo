@@ -15,9 +15,8 @@ import asyncio
 import sys
 
 from dotenv import load_dotenv
-from google.genai import types
-
 from google.adk.runners import Runner
+from google.genai import types
 
 from .agent import root_agent
 from .session_services import APP_NAME, build_session_service

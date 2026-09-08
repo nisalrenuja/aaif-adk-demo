@@ -69,7 +69,6 @@ from .model import (
     build_model,
 )
 from .resilience import degrade_gracefully
-from .weather import build_weather_tools
 from .tools import (
     check_budget,
     choose_hotel,
@@ -79,7 +78,7 @@ from .tools import (
     save_preferences,
     set_itinerary_day,
 )
-
+from .weather import build_weather_tools
 
 # --- 1. Preferences --------------------------------------------------------
 

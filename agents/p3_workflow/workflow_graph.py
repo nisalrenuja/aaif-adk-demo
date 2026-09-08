@@ -32,7 +32,7 @@ Run it with:
 
 from __future__ import annotations
 
-from google.adk.workflow import JoinNode, START, Workflow, node
+from google.adk.workflow import START, JoinNode, Workflow, node
 
 from .agent import (
     activity_researcher,

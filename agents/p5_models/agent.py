@@ -92,7 +92,6 @@ from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import google_search
 
-from .resilience import degrade_gracefully
 from .providers import (
     ASSEMBLER_MODEL_ID,
     PRIMARY_MODEL_ID,
@@ -101,7 +100,7 @@ from .providers import (
     build_creative_model,
     build_model,
 )
-from .weather import build_weather_tools
+from .resilience import degrade_gracefully
 from .tools import (
     check_budget,
     choose_hotel,
@@ -111,7 +110,7 @@ from .tools import (
     save_preferences,
     set_itinerary_day,
 )
-
+from .weather import build_weather_tools
 
 # --- 1. Preferences --------------------------------------------------------
 

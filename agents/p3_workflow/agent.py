@@ -54,7 +54,6 @@ from .tools import (
     set_itinerary_day,
 )
 
-
 # --- 1. Preferences --------------------------------------------------------
 
 preference_agent = Agent(

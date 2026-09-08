@@ -15,5 +15,7 @@ from ._runner import run
 from .agent import root_agent
 
 if __name__ == "__main__":
-    request = " ".join(sys.argv[1:]) or "Plan me 3 days in Kandy, budget 250 USD, I like culture and food"
+    request = " ".join(sys.argv[1:]) or (
+        "Plan me 3 days in Kandy, budget 250 USD, I like culture and food"
+    )
     asyncio.run(run(request, agent=root_agent))
