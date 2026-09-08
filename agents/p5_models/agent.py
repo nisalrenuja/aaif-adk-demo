@@ -140,6 +140,11 @@ preference_agent = Agent(
 
 flight_researcher = Agent(
     name="flight_researcher",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     model=build_model(PRIMARY_MODEL_ID),
     description="Shortlists flights to the destination.",
     instruction=(
@@ -162,6 +167,11 @@ flight_researcher = Agent(
 
 hotel_researcher = Agent(
     name="hotel_researcher",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     model=build_model(SECOND_MODEL_ID),
     description="Shortlists places to stay at the destination.",
     instruction=(
@@ -182,6 +192,11 @@ hotel_researcher = Agent(
 
 activity_researcher = Agent(
     name="activity_researcher",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     # The creative one, and the agent that leaves Gemini. Suggesting what is worth
     # doing with three days is judgement, not lookup. See providers.py.
     model=build_creative_model(),
@@ -227,6 +242,11 @@ activity_researcher = Agent(
 # stays on Gemini precisely because it needs Gemini.
 events_researcher = Agent(
     name="events_researcher",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     model=build_model(SECOND_MODEL_ID),
     description="Finds festivals and events happening during the trip dates.",
     instruction=(
@@ -262,6 +282,11 @@ research_team = ParallelAgent(
 
 itinerary_assembler = Agent(
     name="itinerary_assembler",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     # Its own model id. It makes the most calls of anything here. See model.py.
     model=build_model(ASSEMBLER_MODEL_ID),
     description="Builds the day by day plan and picks the hotel.",
@@ -281,6 +306,13 @@ itinerary_assembler = Agent(
         "activities that best match their interests. The budget check runs after "
         "you and will tell you what to cut, and cutting a good plan gives a better "
         "trip than padding a cheap one.\n"
+        "\n"
+        "Make exactly one pass and then stop. One choose_hotel call, one "
+        "set_itinerary_day call per day, then report. Do not re-check your own "
+        "arithmetic and do not revise a choice you already made in this pass. The "
+        "budget check runs after you and it is the only thing that decides whether "
+        "the plan is affordable. Second guessing yourself here costs a model call "
+        "and hides the refinement step that follows.\n"
         "\n"
         "Do this every time you run:\n"
         "1. Call choose_hotel with one name from the shortlist.\n"
@@ -305,6 +337,11 @@ itinerary_assembler = Agent(
 
 budget_checker = Agent(
     name="budget_checker",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     model=build_model(THIRD_MODEL_ID),
     description="Totals the trip and decides whether the loop keeps going.",
     instruction=(
@@ -333,6 +370,11 @@ refinement_loop = LoopAgent(
 
 presenter = Agent(
     name="presenter",
+    # This agent reads its inputs from state, above, so it does not need the
+    # conversation history. ADK still passes this turn's own tool calls and
+    # results, which is all it actually uses. This one line is the single
+    # biggest cost saving in the pipeline. See the cost note in the README.
+    include_contents="none",
     model=build_model(PRIMARY_MODEL_ID),
     description="Writes up the finished trip for the traveller.",
     instruction=(

@@ -32,9 +32,13 @@ from google.genai import types
 #     TRIP_PRIMARY_MODEL=gemini-3.8-flash python3 -m agents.p3_workflow.run_pipeline "..."
 #
 # `python3 docs/check_models.py` tells you which ids still have headroom.
-PRIMARY_MODEL_ID = os.environ.get("TRIP_PRIMARY_MODEL", "gemini-3.6-flash")
-SECOND_MODEL_ID = os.environ.get("TRIP_SECOND_MODEL", "gemini-3.7-flash")
-THIRD_MODEL_ID = os.environ.get("TRIP_THIRD_MODEL", "gemini-3.5-flash")
+# Lite tier by default. These are the cheapest ids that still handle this work,
+# and a full run was verified end to end on them, loop and all. Nothing here needs
+# a large model: the agents call one tool and summarise a dict. Swap upward with
+# the environment variables below if you find a step that genuinely struggles.
+PRIMARY_MODEL_ID = os.environ.get("TRIP_PRIMARY_MODEL", "gemini-3.5-flash-lite")
+SECOND_MODEL_ID = os.environ.get("TRIP_SECOND_MODEL", "gemini-3.1-flash-lite")
+THIRD_MODEL_ID = os.environ.get("TRIP_THIRD_MODEL", "gemini-3.1-flash-lite-preview")
 
 # The assembler runs inside the refinement loop and makes the most calls of any
 # agent here: choose a hotel, then one call per day, then a summary, then possibly
@@ -44,7 +48,9 @@ THIRD_MODEL_ID = os.environ.get("TRIP_THIRD_MODEL", "gemini-3.5-flash")
 #
 # It therefore gets its own id when you give it one. Defaults to sharing SECOND,
 # which is the right default on a paid key where none of this matters.
-ASSEMBLER_MODEL_ID = os.environ.get("TRIP_ASSEMBLER_MODEL", SECOND_MODEL_ID)
+ASSEMBLER_MODEL_ID = os.environ.get(
+    "TRIP_ASSEMBLER_MODEL", "gemini-3-flash-preview"
+)
 
 
 # Bounding retry *attempts* is not enough. An overloaded model does not refuse
