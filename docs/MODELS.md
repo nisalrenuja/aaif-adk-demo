@@ -64,10 +64,14 @@ Both were hit during this build:
 | `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` | 5 | 5 requests a minute, per model |
 | `GenerateRequestsPerDayPerProjectPerModel-FreeTier` | 20 | **20 requests a day, per model** |
 
-The per day limit is the one that ends a rehearsal. A single Phase 3 pipeline run
-costs 10 to 15 model calls, so on a free key you get roughly **one and a half full
-runs per model, per day**. Spread across the three model ids this repo uses, that is
-about four runs in total before everything is exhausted until the quota resets.
+The per day limit is the one that ends a rehearsal. Measured, not estimated: one
+full Phase 3 run with the budget loop taking two passes costs **17 model calls and
+48,892 billable tokens**, spread across four models with a worst case of 6 calls on
+a single model. That gives roughly **3 full runs a day** before the busiest model
+hits its cap.
+
+Run `python3 -m agents.p3_workflow.measure_cost` to see the breakdown for yourself,
+including which agent is costing you what.
 
 The error names which limit you hit, so read the `quotaId`, not just the number:
 

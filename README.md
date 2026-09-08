@@ -54,6 +54,10 @@ model call**, because the best demo is one that cannot flake:
 | 5 | `show_models.py` prints which model every agent runs on |
 | 6 | `run_booking.py` drives the approval gate for two or three calls, not fifteen |
 
+One more, which does spend quota because it has to: `measure_cost.py` runs the
+pipeline and reports exactly what it cost in calls and tokens, per agent and per
+model, read from ADK's own `usage_metadata`. Available from Phase 3 onward.
+
 ## Docs
 
 | File | What it is |

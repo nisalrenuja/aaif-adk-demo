@@ -147,6 +147,42 @@ researcher killed the entire pipeline, because `ParallelAgent` uses an
 
 The other two researchers finished normally and the pipeline carried on.
 
+## What one run actually costs
+
+```bash
+python3 -m agents.p3_workflow.measure_cost
+```
+
+Every ADK event carries `usage_metadata`, so this is measured rather than guessed.
+One full run, with the loop taking two passes:
+
+| Agent | Calls | Input tokens | Output |
+| --- | --- | --- | --- |
+| `itinerary_assembler` | 4 | 20,232 | 987 |
+| `budget_checker` | 4 | 13,474 | 94 |
+| `presenter` | 1 | 4,558 | 303 |
+| `activity_researcher` | 2 | 1,362 | 56 |
+| `flight_researcher` | 2 | 1,359 | 59 |
+| `hotel_researcher` | 2 | 1,128 | 37 |
+| `preference_agent` | 2 | 994 | 72 |
+| **Total** | **17** | **43,107** | **1,608** |
+
+Plus 4,177 thinking tokens. **48,892 billable tokens for one run.**
+
+Two things worth saying out loud:
+
+**The loop is 78% of your input tokens.** The assembler and budget checker run
+twice and carry the full state each time. If you ever need to make an agent
+pipeline cheaper, the loop is where you look first, not the number of agents.
+
+**Input dwarfs output, 27 to 1.** That is normal for agent pipelines and it is good
+news, because input is the cheaper half of every price sheet. It also means context
+size, not verbosity, is what drives your bill.
+
+For the free tier, what matters is calls per model, not tokens. This run spread 17
+calls over four models, worst case 6 on one model, so roughly **3 runs a day**
+before that model hits its 20 per day cap. The script prints that verdict for you.
+
 ## Things that will bite you
 
 **Quota is the real constraint, not the code.** One full run is 10 to 15 model
