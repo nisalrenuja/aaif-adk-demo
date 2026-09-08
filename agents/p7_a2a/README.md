@@ -88,6 +88,25 @@ pipeline builds with four researchers instead of five.
 
 ## Things that will bite you
 
+**Start the expert before `adk web`.** ADK imports each agent module once and
+caches it. `build_local_expert()` runs at import time, so a planner loaded while
+the service is down builds with four researchers and stays that way until you
+restart `adk web`. Correct order:
+
+```bash
+python3 -m local_expert_service.server   # first
+adk web agents                           # then this
+```
+
+**`http://localhost:8001` returns 405 Method Not Allowed.** That is correct, not a
+failure. The A2A root is a JSON-RPC endpoint that only accepts POST, so browsing to
+it looks broken on a projector. Point people at the card instead:
+
+```
+http://localhost:8001/.well-known/agent-card.json
+```
+
+
 **`sse-starlette` is missing from the extra.** `pip install "google-adk[a2a]"` does
 not pull it in, and the server dies at startup with
 `ModuleNotFoundError: No module named 'sse_starlette'`. Install it explicitly.
