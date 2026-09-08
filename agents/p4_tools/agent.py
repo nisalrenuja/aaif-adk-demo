@@ -5,16 +5,20 @@ Everything from Phase 3 still stands. What changes is where the tools come from.
 Until now every tool was a function in `tools.py`. This phase adds two that are
 not:
 
-- **`google_search`**, a tool built into the Gemini model itself. `events_researcher`
-  uses it to answer "what is on that week", which no amount of mock data can know.
-  It runs inside the model, so there is no HTTP for you to write.
-- **an OpenAPI spec**, turned into a callable toolset by one line in `weather.py`.
-  The activity researcher now checks the forecast before putting a hike outdoors on
-  a rainy day. open-meteo needs no key and no account, which is what makes it
-  usable in front of a room.
+`activity_researcher` now holds all three kinds at once:
 
-The parallel fan out is now four wide, which also happens to look better in the
-`adk web` trace.
+- **its own function tool**, `research_activities`, the kind from Phase 0.
+- **an OpenAPI spec**, turned into a callable toolset by one line in `weather.py`,
+  so it checks the forecast before an outdoor activity lands on a rainy day.
+  open-meteo needs no key and no account, which is what makes it usable in front
+  of a room.
+- **`google_search`**, built into the Gemini model itself. It answers "what is on
+  that week", which no amount of mock data can know. It runs inside the model, so
+  there is no HTTP for you to write.
+
+One agent, three tool sources, which is the point. ADK 2.5 wraps the built in tool
+automatically when other tools are present; older versions could not mix them at
+all and needed an AgentTool wrapper.
 
 The original Phase 3 docstring follows, because none of it stopped being true.
 
@@ -151,20 +155,26 @@ activity_researcher = Agent(
     instruction=(
         "Trip preferences: {preferences?}\n"
         "\n"
-        "Do two things.\n"
+        "Do three things.\n"
         "1. Call research_activities with the destination city and the traveller's "
         "interests.\n"
         "2. Check the forecast for the trip. Kandy is latitude 7.2906, longitude "
         "80.6337, timezone Asia/Colombo. Ask for "
         "temperature_2m_max,precipitation_sum,precipitation_probability_max.\n"
+        "3. Search for festivals, processions, public holidays and events on in "
+        "the city around the trip dates.\n"
         "\n"
-        "Reply with one line on how many options you found, and one line flagging "
-        "any day with a high chance of rain so the assembler can keep outdoor "
-        "activities off it."
+        "Reply with one line on how many activity options you found, one line "
+        "flagging any day with a high chance of rain so the assembler can keep "
+        "outdoor activities off it, and at most three events with dates.\n"
+        "\n"
+        "If you find no events, say so plainly. Do not invent one, because someone "
+        "may plan a trip around it."
     ),
-    # research_activities is ours. The forecast tool is generated from an OpenAPI
-    # spec and calls a service that has never heard of this project.
-    tools=[research_activities, *build_weather_tools()],
+    # Three sources in one agent: our own function tool, a toolset generated from
+    # an OpenAPI spec, and google_search which runs inside the model itself.
+    # ADK 2.5 wraps the built in tool automatically when other tools are present.
+    tools=[research_activities, *build_weather_tools(), google_search],
     output_key="activity_summary",
     # Research is best effort. A transient model failure here degrades to an
     # honest empty result rather than cancelling the whole parallel fan out.
@@ -172,38 +182,11 @@ activity_researcher = Agent(
 )
 
 
-events_researcher = Agent(
-    name="events_researcher",
-    model=build_model(SECOND_MODEL_ID),
-    description="Finds festivals and events happening during the trip dates.",
-    instruction=(
-        "Trip preferences: {preferences?}\n"
-        "\n"
-        "Search for festivals, processions, public holidays and events happening in "
-        "the destination city around the trip dates. Reply with at most three, one "
-        "line each, with the date if you can find it.\n"
-        "\n"
-        "If you find nothing specific, say so plainly. Do not invent an event, "
-        "because someone may plan a trip around it."
-    ),
-    # A tool built into the model. There is no HTTP here for us to write, and no
-    # key to manage beyond the one already in .env.
-    tools=[google_search],
-    output_key="events_summary",
-    # Research is best effort. A transient model failure here degrades to an
-    # honest empty result rather than cancelling the whole parallel fan out.
-    on_model_error_callback=degrade_gracefully,
-)
 
 research_team = ParallelAgent(
     name="research_team",
     description="Runs the flight, hotel and activity lookups at the same time.",
-    sub_agents=[
-        flight_researcher,
-        hotel_researcher,
-        activity_researcher,
-        events_researcher,
-    ],
+    sub_agents=[flight_researcher, hotel_researcher, activity_researcher],
 )
 
 
@@ -220,8 +203,7 @@ itinerary_assembler = Agent(
         "Preferences: {preferences?}\n"
         "Hotel shortlist: {hotel_options?}\n"
         "Activity shortlist: {activity_options?}\n"
-        "Weather and activity notes: {activity_summary?}\n"
-        "What is on in town: {events_summary?}\n"
+        "Weather, events and activity notes: {activity_summary?}\n"
         "Current plan: {itinerary?}\n"
         "Budget feedback from the last check: {budget_feedback?}\n"
         "\n"

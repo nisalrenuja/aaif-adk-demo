@@ -10,10 +10,9 @@ Up to now every tool was a function somebody on your team wrote. That is the
 smallest interesting case, not the whole story. This phase adds two tools that
 nobody here wrote.
 
-**A tool built into the model.** `events_researcher` holds exactly one tool,
-`google_search`. It runs inside Gemini, so there is no HTTP client, no key beyond
-the one already in `.env`, and no parsing. It answers the question mock data never
-can: what is actually on in Kandy that week.
+**A tool built into the model.** `google_search` runs inside Gemini, so there is no
+HTTP client, no key beyond the one already in `.env`, and no parsing. It answers
+the question mock data never can: what is actually on in Kandy that week.
 
 **A tool generated from a spec.** `weather.py` holds an OpenAPI document as a
 string, and one line turns it into callable tools:
@@ -30,18 +29,22 @@ open-meteo was chosen because it needs no key and no account. That is a real
 constraint for a live demo: a third party you can show without a login on the
 projector is worth more than a better one you cannot.
 
-## The fan out is four wide now
+## Three tool sources, one agent
 
-```
-ParallelAgent  research_team
-  flight_researcher     our function tool
-  hotel_researcher      our function tool
-  activity_researcher   our function tool + the OpenAPI weather tool
-  events_researcher     the model's built in google_search
+```python
+tools=[research_activities, *build_weather_tools(), google_search]
 ```
 
-Four tool sources, one fan out, and it looks better in the `adk web` trace than
-three did.
+`activity_researcher` holds all three kinds at once: a function we wrote, a toolset
+generated from a spec, and a capability of the model itself. That single line is
+the phase.
+
+Older ADK could not do this. A built in tool had to sit alone on its own agent, and
+mixing it with a function tool meant an `AgentTool` wrapper. ADK 2.5 wraps the
+built in tool automatically when other tools are present.
+
+Keep that line in view, because Phase 5 breaks it apart again for a reason worth
+hearing.
 
 ## Run it
 
@@ -81,23 +84,19 @@ python3 -m agents.p4_tools.run_pipeline "Plan me 3 days in Kandy, budget 250 USD
 
 ## Details worth knowing
 
-**Built in tools used to be exclusive.** In older ADK, an agent holding
-`google_search` could not also hold a function tool, and the workaround was to wrap
-the search agent with `AgentTool`. ADK 2.5 wraps built in tools automatically when
-other tools are present, so mixing works. `events_researcher` still keeps
-`google_search` on its own anyway, because a single purpose agent routes better and
-its output is easier to read in a trace.
-
-**A built in tool needs a Gemini model.** `google_search` runs inside the model. It
-is not available through `LiteLlm`, which is worth knowing before Phase 5 tempts
-you to move this agent onto Claude.
+**A built in tool needs a Gemini model, and this bites in Phase 5.**
+`google_search` runs inside the model rather than being sent over the wire, so it
+cannot follow an agent to another provider. Point this agent at Claude and ADK
+raises `ValueError: Google search tool is not supported for model anthropic/...`
+**at request time, not at startup**, so everything looks fine until you demo it.
+That is exactly what happens in Phase 5, and why the search work splits off there.
 
 **The spec is the prompt.** The `description` fields in `OPEN_METEO_SPEC` are what
 the model reads, exactly as a docstring is in Phase 0. The latitude and longitude
 for Kandy live in that description, which is why the agent can call the endpoint
 without anyone hardcoding coordinates in Python.
 
-**Tell it not to invent.** `events_researcher` is instructed to say it found
+**Tell it not to invent.** The agent is instructed to say it found
 nothing rather than produce a plausible festival. Someone might plan a trip around
 that answer.
 

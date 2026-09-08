@@ -23,17 +23,40 @@ Anyone can show that a swap is possible. The interesting question is why you wou
 
 This pipeline has two kinds of work in it:
 
-| Work | Agents | Runs | Wants |
-| --- | --- | --- | --- |
-| Structured lookup | the four researchers | every request, four at a time | cheap and fast |
-| Composition | assembler, presenter | once or twice | judgement and prose |
+| Work | Agents | Wants |
+| --- | --- | --- |
+| Structured lookup | flights, hotels, events, budget check | cheap and fast |
+| Judgement | `activity_researcher` | a stronger model |
 
-The researchers call one tool, read a dict and emit a line. That is where the cost
-is, and a small Flash model does it well. The assembler balances a budget against
-interests, weather and what is on in town. The presenter writes the thing a human
-actually reads. Their output is the output.
+Most of these agents call one tool, read a dict and emit a line. A small Flash
+model does that well and that is where the volume is.
 
-**Cheap where it is repeated, strong where it is read.** That is the slide.
+`activity_researcher` is different. Deciding what is actually worth doing with
+three days, given someone's interests and the weather, is judgement, and it is the
+part of the plan a traveller feels. It is the one agent that leaves Gemini.
+
+**Cheap where it is repeated, strong where it matters.** That is the slide.
+
+## The split this forced, which is the better lesson
+
+In Phase 4, `activity_researcher` held three tool sources at once, `google_search`
+among them. Moving it to Claude broke that, and the failure is worth showing:
+
+```
+ValueError: Google search tool is not supported for model anthropic/claude-sonnet-4-5
+```
+
+`google_search` is built into the Gemini model, not sent over the wire, so it
+cannot follow an agent to another provider. Worse, ADK raises this **at request
+time, not at startup**. The agent constructs fine. The demo dies mid run.
+
+So the search work moved to `events_researcher`, which stays on Gemini because it
+has to. **A provider bound capability pins an agent to a provider**, and the way to
+keep both is to put them in different agents.
+
+That is the honest version of "just swap the model". Most of the pipeline swaps in
+one line. The part that touches a built in tool does not, and knowing which is
+which is the actual skill.
 
 ## Run it
 
@@ -44,8 +67,8 @@ python3 -m agents.p5_models.show_models
 ```
 
 It prints every agent, its role and the model it will actually use. Then add
-`ANTHROPIC_API_KEY` to `.env`, run it again, and watch two rows change while the
-other six stay put.
+`ANTHROPIC_API_KEY` to `.env`, run it again, and watch `activity_researcher` move
+to Claude while everything else stays on Gemini.
 
 The full pipeline is unchanged:
 
@@ -76,9 +99,8 @@ do that, show the code on a slide and say so rather than running it and hoping.
 constants at the top of `providers.py`. LiteLLM model ids are `provider/model`, and
 the provider prefix is what decides which environment variable gets read.
 
-**Built in tools do not travel.** `google_search` from Phase 4 runs inside Gemini.
-It is not available through LiteLLM, so `events_researcher` has to stay on Gemini.
-Worth knowing before you move an agent and wonder where its tool went.
+**Built in tools do not travel.** Covered above, and it is the thing most likely
+to catch someone in the room who tries this on Monday.
 
 **This also buys quota headroom.** The free Gemini tier is counted per model, so
 spreading agents across providers spreads the limits too. That is a side effect

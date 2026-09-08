@@ -43,18 +43,26 @@ Phase 5: model diversity. One pipeline, more than one provider.
 Everything from Phase 4 still stands. What changes is which model each agent runs
 on, and it changes on two agents only.
 
-The four researchers do structured lookups: call a tool, read a dict, emit a line.
-They run on every request, there are four of them, and that is where the cost is.
-They stay on cheap Gemini Flash.
+Most of these agents do structured lookups: call a tool, read a dict, emit a line.
+Flights, hotels, events, the budget check. That work rewards being cheap and fast,
+and small Gemini Flash models do it well.
 
-The assembler and the presenter compose. One balances a budget against interests,
-weather and what is on in town. The other writes the thing a human reads. They run
-once or twice, and their output is the output. They go to a stronger model, through
-LiteLLM, which makes the swap a one line change:
+`activity_researcher` is different. Deciding what is actually worth doing with
+three days, given someone's interests and the weather, is judgement rather than
+lookup, and it is the part of the plan a traveller feels. So it is the one agent
+that leaves Gemini, through LiteLLM, which makes the swap a one line change:
 
     Agent(model=LiteLlm(model="anthropic/claude-sonnet-4-5"), ...)
 
-Cheap where it is repeated, strong where it is read.
+Cheap where it is repeated, strong where it matters.
+
+Moving it forced a split that is worth more than the swap itself. In Phase 4 the
+activity agent held three tool sources at once, including `google_search`. That
+tool is built into the Gemini model rather than sent over the wire, so it cannot
+follow the agent to Claude: ADK raises `ValueError: Google search tool is not
+supported for model anthropic/...` at request time, not at startup. The search
+work therefore moved to its own agent, which stays on Gemini because it has to.
+Provider bound capabilities pin an agent to a provider.
 
 If no third party key is present, `build_creative_model()` returns Gemini and says
 so, so the pipeline still runs. See `providers.py`.
@@ -68,16 +76,20 @@ Everything from Phase 3 still stands. What changes is where the tools come from.
 Until now every tool was a function in `tools.py`. This phase adds two that are
 not:
 
-- **`google_search`**, a tool built into the Gemini model itself. `events_researcher`
-  uses it to answer "what is on that week", which no amount of mock data can know.
-  It runs inside the model, so there is no HTTP for you to write.
-- **an OpenAPI spec**, turned into a callable toolset by one line in `weather.py`.
-  The activity researcher now checks the forecast before putting a hike outdoors on
-  a rainy day. open-meteo needs no key and no account, which is what makes it
-  usable in front of a room.
+`activity_researcher` now holds all three kinds at once:
 
-The parallel fan out is now four wide, which also happens to look better in the
-`adk web` trace.
+- **its own function tool**, `research_activities`, the kind from Phase 0.
+- **an OpenAPI spec**, turned into a callable toolset by one line in `weather.py`,
+  so it checks the forecast before an outdoor activity lands on a rainy day.
+  open-meteo needs no key and no account, which is what makes it usable in front
+  of a room.
+- **`google_search`**, built into the Gemini model itself. It answers "what is on
+  that week", which no amount of mock data can know. It runs inside the model, so
+  there is no HTTP for you to write.
+
+One agent, three tool sources, which is the point. ADK 2.5 wraps the built in tool
+automatically when other tools are present; older versions could not mix them at
+all and needed an AgentTool wrapper.
 
 The original Phase 3 docstring follows, because none of it stopped being true.
 
@@ -122,6 +134,7 @@ from google.adk.tools import google_search
 
 from .resilience import degrade_gracefully
 from .providers import (
+    ASSEMBLER_MODEL_ID,
     PRIMARY_MODEL_ID,
     SECOND_MODEL_ID,
     THIRD_MODEL_ID,
@@ -211,7 +224,9 @@ hotel_researcher = Agent(
 
 activity_researcher = Agent(
     name="activity_researcher",
-    model=build_model(THIRD_MODEL_ID),
+    # The creative one, and the agent that leaves Gemini. Suggesting what is worth
+    # doing with three days is judgement, not lookup. See providers.py.
+    model=build_creative_model(),
     description="Shortlists things to do at the destination.",
     instruction=(
         "Trip preferences: {preferences?}\n"
@@ -223,12 +238,13 @@ activity_researcher = Agent(
         "80.6337, timezone Asia/Colombo. Ask for "
         "temperature_2m_max,precipitation_sum,precipitation_probability_max.\n"
         "\n"
-        "Reply with one line on how many options you found, and one line flagging "
-        "any day with a high chance of rain so the assembler can keep outdoor "
-        "activities off it."
+        "Reply with one line on how many options you found and which interests "
+        "they lean towards, then one line flagging any day with a high chance of "
+        "rain so the assembler can keep outdoor activities off it."
     ),
-    # research_activities is ours. The forecast tool is generated from an OpenAPI
-    # spec and calls a service that has never heard of this project.
+    # research_activities is ours and the forecast comes from an OpenAPI spec.
+    # Both are ordinary tools, so both travel to another provider. google_search
+    # does not, which is why it moved to its own agent below.
     tools=[research_activities, *build_weather_tools()],
     output_key="activity_summary",
     # Research is best effort. A transient model failure here degrades to an
@@ -237,6 +253,20 @@ activity_researcher = Agent(
 )
 
 
+# In Phase 4 this agent's work was part of activity_researcher, three tool sources
+# on one agent. It had to split here, and the reason is the lesson:
+#
+#   google_search is built into the Gemini model. It is not a tool ADK sends over
+#   the wire, it is a capability of the model itself. Move an agent to Claude or
+#   GPT through LiteLLM and ADK raises
+#
+#       ValueError: Google search tool is not supported for model anthropic/...
+#
+#   at request time, not at startup, so it looks fine until you demo it.
+#
+# So the split is not tidiness. Provider bound capabilities pin an agent to a
+# provider, and the way to keep both is to put them in different agents. This one
+# stays on Gemini precisely because it needs Gemini.
 events_researcher = Agent(
     name="events_researcher",
     model=build_model(SECOND_MODEL_ID),
@@ -244,21 +274,18 @@ events_researcher = Agent(
     instruction=(
         "Trip preferences: {preferences?}\n"
         "\n"
-        "Search for festivals, processions, public holidays and events happening in "
-        "the destination city around the trip dates. Reply with at most three, one "
-        "line each, with the date if you can find it.\n"
+        "Search for festivals, processions, public holidays and events happening "
+        "in the destination city around the trip dates. Reply with at most three, "
+        "one line each, with the date if you can find it.\n"
         "\n"
         "If you find nothing specific, say so plainly. Do not invent an event, "
         "because someone may plan a trip around it."
     ),
-    # A tool built into the model. There is no HTTP here for us to write, and no
-    # key to manage beyond the one already in .env.
     tools=[google_search],
     output_key="events_summary",
-    # Research is best effort. A transient model failure here degrades to an
-    # honest empty result rather than cancelling the whole parallel fan out.
     on_model_error_callback=degrade_gracefully,
 )
+
 
 # The remote agent, or None when its service is not running.
 local_expert = build_local_expert()
@@ -275,6 +302,7 @@ if local_expert is not None:
     # four agents defined thirty lines above it. Nothing else changes.
     _researchers.append(local_expert)
 
+
 research_team = ParallelAgent(
     name="research_team",
     description="Runs every destination lookup at the same time.",
@@ -286,8 +314,8 @@ research_team = ParallelAgent(
 
 itinerary_assembler = Agent(
     name="itinerary_assembler",
-    # Composition, not lookup. Worth a stronger model. See providers.py.
-    model=build_creative_model(),
+    # Its own model id. It makes the most calls of anything here. See model.py.
+    model=build_model(ASSEMBLER_MODEL_ID),
     description="Builds the day by day plan and picks the hotel.",
     instruction=(
         "You build the plan. Everything you need is already in state.\n"
@@ -296,11 +324,11 @@ itinerary_assembler = Agent(
         "Hotel shortlist: {hotel_options?}\n"
         "Activity shortlist: {activity_options?}\n"
         "Weather and activity notes: {activity_summary?}\n"
+        "What is on in town: {events_summary?}\n"
         # A RemoteA2aAgent has no output_key, so its answer is not in state. It is
         # in the conversation, which every later step in the sequence can see.
         "If a local_expert has spoken earlier in this conversation, use its advice "
         "on timing and queues when placing activities.\n"
-        "What is on in town: {events_summary?}\n"
         "Current plan: {itinerary?}\n"
         "Budget feedback from the last check: {budget_feedback?}\n"
         "\n"
@@ -361,8 +389,7 @@ refinement_loop = LoopAgent(
 
 presenter = Agent(
     name="presenter",
-    # This agent's output is the output. Worth a stronger model. See providers.py.
-    model=build_creative_model(),
+    model=build_model(PRIMARY_MODEL_ID),
     description="Writes up the finished trip for the traveller.",
     instruction=(
         "Write up the finished trip.\n"

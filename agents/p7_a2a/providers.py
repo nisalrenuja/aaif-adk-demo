@@ -37,7 +37,13 @@ import os
 from google.adk.models import Gemini
 from google.genai import types
 
-from .model import PRIMARY_MODEL_ID, SECOND_MODEL_ID, THIRD_MODEL_ID, build_model
+from .model import (
+    ASSEMBLER_MODEL_ID,
+    PRIMARY_MODEL_ID,
+    SECOND_MODEL_ID,
+    THIRD_MODEL_ID,
+    build_model,
+)
 
 # LiteLLM model ids. Change these to match whatever key you actually hold.
 # The prefix before the slash is the provider, and LiteLLM reads the matching
@@ -84,6 +90,7 @@ def build_lookup_model(model_id: str = THIRD_MODEL_ID) -> Gemini:
 
 __all__ = [
     "ANTHROPIC_MODEL",
+    "ASSEMBLER_MODEL_ID",
     "OPENAI_MODEL",
     "PRIMARY_MODEL_ID",
     "SECOND_MODEL_ID",

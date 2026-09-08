@@ -36,7 +36,6 @@ from google.adk.workflow import JoinNode, START, Workflow, node
 
 from .agent import (
     activity_researcher,
-    events_researcher,
     flight_researcher,
     hotel_researcher,
     itinerary_assembler,
@@ -110,7 +109,6 @@ _preferences = _as_node(preference_agent, "preferences")
 _flights = _as_node(flight_researcher, "flights")
 _hotels = _as_node(hotel_researcher, "hotels")
 _activities = _as_node(activity_researcher, "activities")
-_events = _as_node(events_researcher, "events")
 _assemble = _as_node(itinerary_assembler, "assemble")
 _present = _as_node(presenter, "present")
 
@@ -124,7 +122,7 @@ root_agent = Workflow(
     edges=[
         # preferences, then three researchers at once, then wait for all three,
         # then assemble, then the gate.
-        (START, _preferences, (_flights, _hotels, _activities, _events),
+        (START, _preferences, (_flights, _hotels, _activities),
          research_complete, _assemble, budget_gate),
         # The loop back, and the way out. Routing as data.
         (budget_gate, {"again": _assemble, "done": _present}),
