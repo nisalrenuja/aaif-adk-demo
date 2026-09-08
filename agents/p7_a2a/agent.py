@@ -482,7 +482,13 @@ booking_agent = Agent(
         "book_trip pauses for human approval before it runs, so do not treat "
         "calling it as the booking being done. If it comes back rejected, say so "
         "plainly and ask what they would like changed. Do not call it again on the "
-        "same details."
+        "same details.\n"
+        "\n"
+        "Report only what the tool returned. It writes a booking record and does "
+        "nothing else. Do not say a confirmation email has been sent, that an "
+        "airline or hotel has been contacted, or that a card has been charged, "
+        "because none of that happens. Inventing a side effect is worse than "
+        "saying nothing, because someone will go looking for that email."
     ),
     tools=[book_trip_tool, cancel_booking_tool],
 )

@@ -57,7 +57,10 @@ def book_trip(traveller_name: str, email: str, tool_context: ToolContext) -> dic
         email: Email address for the confirmation.
 
     Returns:
-        A dict with "status", a "reference" to quote, and what was charged.
+        A dict with "status", a "reference" to quote, what was charged, and a
+        "side_effects" field. Report the side effects exactly as given: this
+        records a booking and nothing else. It does not send email, contact an
+        airline or hotel, or move money.
     """
     state = tool_context.state
 
@@ -83,6 +86,13 @@ def book_trip(traveller_name: str, email: str, tool_context: ToolContext) -> dic
         "days_booked": len({item["day"] for item in itinerary}),
         "activities_booked": len(itinerary),
         "charged_usd": total,
+        # Spelled out because the model will otherwise fill the gap itself. An
+        # early run of this demo cheerfully told the traveller "a confirmation
+        # email has been sent to your address". Nothing of the sort happened.
+        "side_effects": (
+            "None. This is a mock booking stored in session state. No email was "
+            "sent, no airline or hotel was contacted, and no payment was taken."
+        ),
     }
 
     state[BOOKINGS] = [*state.get(BOOKINGS, []), booking]
