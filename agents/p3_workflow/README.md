@@ -1,6 +1,5 @@
 # Phase 3: Workflow Agents
 
-**Branch:** `phase-3-workflow`
 **Teaches:** `SequentialAgent`, `ParallelAgent`, `LoopAgent`, all three in one
 pipeline, plus the graph runtime that replaces them.
 

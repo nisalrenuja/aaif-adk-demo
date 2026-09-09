@@ -1,8 +1,8 @@
 # Trip Planner: a Google ADK live demo
 
-A multi agent trip planner built in nine phases, one ADK concept per phase, one git
-branch per phase. Built for a live talk, so every phase runs on mock data and never
-depends on a live third party service to succeed.
+A multi agent trip planner built in nine phases, one ADK concept per phase. Built
+for a live talk, so every phase runs on mock data and never depends on a live third
+party service to succeed.
 
 ![Architecture](docs/architecture.png)
 
@@ -27,20 +27,21 @@ about four runs a day, total. It is the single thing most likely to end the demo
 
 ## The phases
 
-| Branch | Teaches | Folder |
+| Phase | Teaches | Folder |
 | --- | --- | --- |
-| `phase-0-seed` | one Agent, one function tool | `agents/p0_seed` |
-| `phase-1-delegation` | sub agents and LLM routing | `agents/p1_delegation` |
-| `phase-2-state` | session state and session services | `agents/p2_state` |
-| `phase-3-workflow` | Sequential, Parallel and Loop agents | `agents/p3_workflow` |
-| `phase-4-tools` | built in and third party tools | `agents/p4_tools` |
-| `phase-5-models` | LiteLLM, mixing model providers | `agents/p5_models` |
-| `phase-6-safety` | human in the loop confirmation | `agents/p6_safety` |
-| `phase-7-a2a` | agent to agent over the wire | `agents/p7_a2a` |
-| `phase-8-production` | adk web, adk eval, adk deploy | `agents/p8_production` |
+| 0 Seed | one Agent, one function tool | `agents/p0_seed` |
+| 1 Delegation | sub agents and LLM routing | `agents/p1_delegation` |
+| 2 State | session state and session services | `agents/p2_state` |
+| 3 Workflow | Sequential, Parallel and Loop agents | `agents/p3_workflow` |
+| 4 Tools | built in and third party tools | `agents/p4_tools` |
+| 5 Models | LiteLLM, mixing model providers | `agents/p5_models` |
+| 6 Safety | human in the loop confirmation | `agents/p6_safety` |
+| 7 A2A | agent to agent over the wire | `agents/p7_a2a` |
+| 8 Production | adk web, adk eval, adk deploy | `agents/p8_production` |
 
-Each branch is cut from the previous one, so `phase-8-production` contains the whole
-project. Each phase folder has its own README explaining what changed and why.
+Each phase folder builds on the one before it and has its own README explaining
+what changed and why. Every phase is present at once, so `adk web agents` lists
+them all and you can step through them in order.
 
 ## Two extra files per phase
 

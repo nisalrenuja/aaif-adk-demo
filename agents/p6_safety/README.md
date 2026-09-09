@@ -1,6 +1,5 @@
 # Phase 6: Human in the Loop
 
-**Branch:** `phase-6-safety`
 **Teaches:** `require_confirmation`, and where a safety property should live.
 **Stage status:** spine. This one demos beautifully, so give it a proper beat.
 

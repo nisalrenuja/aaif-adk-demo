@@ -1,6 +1,5 @@
 # Phase 0: The Seed
 
-**Branch:** `phase-0-seed`
 **Teaches:** `Agent`, and what a tool actually is in ADK.
 
 ## The one idea

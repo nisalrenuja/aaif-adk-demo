@@ -1,6 +1,5 @@
 # Phase 2: State and Services
 
-**Branch:** `phase-2-state`
 **Teaches:** `tool_context.state`, instruction templating, and swapping the session
 service.
 

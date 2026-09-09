@@ -1,6 +1,5 @@
 # Phase 8: Production
 
-**Branch:** `phase-8-production`
 **Teaches:** `adk web`, `adk eval`, `adk deploy cloud_run`.
 **Stage status:** spine for `adk web` and `adk eval`. Deploy is a recording or a
 pre deployed URL, never a live build.
@@ -227,4 +226,4 @@ say so.
 
 ## Next
 
-Nothing. This is the last phase, and this branch contains all nine.
+Nothing. This is the last phase. All nine live side by side in this repo.

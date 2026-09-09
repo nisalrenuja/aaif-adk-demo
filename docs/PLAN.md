@@ -1,8 +1,8 @@
 # ADK Live Demo: Build Plan
 
-A nine phase, branch per phase build of a multi agent trip planner using Google ADK.
-Every phase adds one ADK concept. The final branch contains every phase, so the repo
-doubles as a reference after the talk.
+A nine phase build of a multi agent trip planner using Google ADK. Every phase adds
+one ADK concept, and all nine live side by side, so the repo doubles as a reference
+after the talk.
 
 ## Verified environment
 
@@ -68,25 +68,6 @@ can end the demo, and no amount of code works around it. Full detail in
    agent also holds function tools, so Phase 4 does not need the old AgentTool
    workaround. Verified by construction.
 
-## Branch strategy
-
-Each branch is cut from the previous one, so the last branch holds everything.
-
-```
-main                    scaffolding, plan, requirements, env example
-  phase-0-seed          one agent, one function tool
-    phase-1-delegation  sub agents plus root concierge
-      phase-2-state     session state, InMemory then SQLite
-        phase-3-workflow    Sequential + Parallel + Loop, plus graph variant
-          phase-4-tools     google_search plus an OpenAPI weather tool
-            phase-5-models  LiteLLM on one agent
-              phase-6-safety    confirmation gate on book_trip
-                phase-7-a2a     remote agent over A2A
-                  phase-8-production  adk web, eval set, cloud run
-```
-
-`main` is merged forward at the end so `main` also has the full project.
-
 ## Repo layout
 
 ```
@@ -95,18 +76,19 @@ agents/                 the adk web agents directory
     __init__.py
     agent.py            root_agent lives here
     mock_data.py        self contained fake data
+    inspect_tool.py     prints the generated tool declaration
     README.md           what this phase teaches
-  p1_delegation/
-  p2_state/
-  p3_workflow/
-  p4_tools/
-  p5_models/
-  p6_safety/
-  p7_a2a/
-  p8_production/
-docs/PLAN.md
+  p1_delegation/ ... p8_production/
+local_expert_service/   the A2A service, its own process (phase 7)
+docs/
+  PLAN.md               this file
+  MODELS.md             which model ids work, and the quota walls
+  RUNBOOK.md            day of the talk checklist
+  DEMO.md               presenter's guide
+  check_models.py       verifies model ids and remaining quota
 README.md
 requirements.txt
+pyproject.toml          ruff configuration
 .env.example
 ```
 

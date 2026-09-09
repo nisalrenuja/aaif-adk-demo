@@ -1,6 +1,5 @@
 # Phase 4: Built in and Third Party Tools
 
-**Branch:** `phase-4-tools`
 **Teaches:** `google_search`, and turning an OpenAPI spec into a toolset.
 **Stage status:** flex. Show it if the room is fast, otherwise the code is here.
 

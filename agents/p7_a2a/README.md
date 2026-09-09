@@ -1,6 +1,5 @@
 # Phase 7: Agent to Agent
 
-**Branch:** `phase-7-a2a`
 **Teaches:** `to_a2a`, `RemoteA2aAgent`, and composing across team boundaries.
 **Stage status:** flex. Needs a second terminal, so only if the room is fast.
 

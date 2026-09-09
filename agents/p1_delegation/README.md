@@ -1,6 +1,5 @@
 # Phase 1: Delegation
 
-**Branch:** `phase-1-delegation`
 **Teaches:** `sub_agents`, and why `description` is routing logic.
 
 ## The one idea

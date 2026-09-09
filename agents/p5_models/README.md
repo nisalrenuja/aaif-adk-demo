@@ -1,6 +1,5 @@
 # Phase 5: Model Diversity
 
-**Branch:** `phase-5-models`
 **Teaches:** `LiteLlm`, and why you would want more than one provider in one
 pipeline.
 **Stage status:** flex. Two minutes if the room is fast, otherwise a slide.
