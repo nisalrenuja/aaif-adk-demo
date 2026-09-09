@@ -30,6 +30,7 @@ class FakeContext:
 
 
 def main() -> None:
+    """Run the offline checks and report. Raises AssertionError on failure."""
     ctx = FakeContext()
 
     save_preferences("Kandy", 3, 250, "culture, food", "none", ctx)

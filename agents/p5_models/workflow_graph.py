@@ -32,6 +32,7 @@ Run it with:
 
 from __future__ import annotations
 
+from google.adk.agents import Context
 from google.adk.workflow import START, JoinNode, Workflow, node
 
 from .agent import (
@@ -50,7 +51,7 @@ MAX_PASSES = 3
 
 
 @node(name="budget_gate")
-def budget_gate(ctx) -> dict:
+def budget_gate(ctx: Context) -> dict:
     """Total the trip and decide whether to refine again or present.
 
     This is the whole argument for the graph runtime in one function. No model, no

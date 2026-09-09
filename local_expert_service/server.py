@@ -35,6 +35,7 @@ PORT = 8001
 
 
 def main() -> None:
+    """Serve the local expert over A2A until interrupted."""
     load_dotenv()
     app = to_a2a(root_agent, host=HOST, port=PORT)
 

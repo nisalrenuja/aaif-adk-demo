@@ -23,6 +23,7 @@ from __future__ import annotations
 import warnings
 
 import httpx
+from google.adk.agents import BaseAgent
 
 warnings.filterwarnings("ignore")
 
@@ -38,7 +39,7 @@ def local_expert_available(timeout: float = 1.0) -> bool:
         return False
 
 
-def build_local_expert():
+def build_local_expert() -> BaseAgent | None:
     """Return the remote local expert, or None when the service is not running.
 
     Returning None rather than raising is deliberate. See the module docstring.

@@ -119,7 +119,13 @@ def get_daily_forecast_cached(city: str, forecast_days: int) -> dict:
 
 
 def build_weather_tools() -> list:
-    """Return the weather tool, live or cached depending on the flag above."""
+    """Return the weather tool, live or cached depending on the flag above.
+
+    Returns:
+        A single item list holding either an OpenAPIToolset generated from the
+        spec above, or the cached function tool. Both expose a daily forecast, so
+        the agent that holds them does not change either way.
+    """
     if USE_LIVE_WEATHER:
         # One line turns a spec into callable tools. ADK parses the operations,
         # builds the declarations from the descriptions, and handles the HTTP.

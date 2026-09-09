@@ -19,6 +19,7 @@ warnings.filterwarnings("ignore", message=r".*EXPERIMENTAL.*")
 
 
 def main() -> None:
+    """Print the declaration ADK generated from the get_flights docstring."""
     declaration = FunctionTool(func=get_flights)._get_declaration()
     print(json.dumps(declaration.model_dump(exclude_none=True), indent=2))
 

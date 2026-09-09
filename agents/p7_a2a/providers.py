@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import os
 
-from google.adk.models import Gemini
+from google.adk.models import BaseLlm, Gemini
 from google.genai import types
 
 from .model import (
@@ -61,7 +61,7 @@ def creative_model_description() -> str:
     return f"{PRIMARY_MODEL_ID} (no third party key found, staying on Gemini)"
 
 
-def build_creative_model():
+def build_creative_model() -> BaseLlm:
     """Return the model for the composition agents.
 
     Prefers a third party model when a key for one is present, and falls back to

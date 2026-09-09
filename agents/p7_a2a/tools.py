@@ -7,6 +7,9 @@ day. The tools do every sum. That split is the reason the budget loop terminates
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from google.adk.tools import ToolContext
 
 from .mock_data import (
@@ -225,12 +228,23 @@ def set_itinerary_day(day: int, activity_names: list[str], tool_context: ToolCon
 # --- Step 4: the budget gate that ends the loop ----------------------------
 
 
-def evaluate_budget(state) -> dict:
+def evaluate_budget(state: Mapping[str, Any]) -> dict:
     """Total the trip and compare it to the budget. Pure arithmetic, no side effects.
 
     Shared by the `check_budget` tool used by the LoopAgent pipeline and by the
     `budget_gate` node used by the Workflow graph, so both runtimes are guaranteed
     to agree on the number.
+
+    Args:
+        state: The session state to read. Only read from, never written to, which
+            is what lets both runtimes call it safely.
+
+    Returns:
+        A dict with "verdict" of either under_budget or over_budget, the
+        "total_cost_usd", the "budget_usd", a "breakdown" by category, and a
+        "feedback" line written for the assembler to act on. When over budget it
+        also carries "overspend_usd", the most expensive activities and the
+        cheaper hotels available.
     """
     prefs = state.get(PREFS, {})
     budget = float(prefs.get("budget_usd", 0) or 0)

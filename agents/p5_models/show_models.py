@@ -37,6 +37,7 @@ ROLES = [
 
 
 def main() -> None:
+    """Print the model every agent will actually use."""
     print(f"{'agent':22} {'role':14} {'provider':10} model")
     print("-" * 72)
     for name, agent, role in ROLES:
