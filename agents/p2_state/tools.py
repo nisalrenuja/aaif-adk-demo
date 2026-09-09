@@ -94,6 +94,7 @@ def get_flights(origin: str, dest: str, date: str, tool_context: ToolContext) ->
 
     return {
         "status": "success",
+        "date": date,
         "flights": options,
         "chosen_flight": cheapest,
         "running_cost_usd": total,
@@ -136,7 +137,7 @@ def get_hotels(city: str, max_price_usd: int, tool_context: ToolContext) -> dict
     }
 
 
-def get_activities(city: str, category: str, tool_context: ToolContext) -> dict:
+def get_activities(city: str, category: str) -> dict:
     """Look up things to do in a city, narrowed to one category.
 
     This only reads. Use add_to_itinerary to actually commit something to the plan.

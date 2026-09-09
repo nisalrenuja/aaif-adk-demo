@@ -29,8 +29,8 @@ during the build and `.env` is in place (gitignored). Verified working.
 ### Hard blocker, still open: free tier quota
 
 The free tier allows **20 requests per day, per model**, and one Phase 3 pipeline
-run costs 10 to 15 model calls. That is roughly four full runs a day across the
-three model ids this repo uses, and it was hit repeatedly while building.
+run costs 17 model calls, measured. That is roughly three full runs a day across
+the four model ids this repo uses, and it was hit repeatedly while building.
 
 **Enable billing on the key before the talk.** This is the one remaining thing that
 can end the demo, and no amount of code works around it. Full detail in
@@ -168,11 +168,11 @@ after finishing. All three cost real time and all three are now in
 | 0 Seed | tool declaration generation, offline |
 | 1 Delegation | structure loads; routing not run live |
 | 2 State | full run, both processes, SQLite persistence across restart |
-| 3 Workflow | loop exit condition offline; full pipeline blocked on daily quota |
+| 3 Workflow | full pipeline end to end, loop fires and cuts; exit condition also proven offline |
 | 4 Tools | OpenAPI weather end to end with live data; `google_search` not run live |
 | 5 Models | fallback path only, no third party key was available |
 | 6 Safety | both approve and reject paths, end to end |
 | 7 A2A | server, agent card and remote call end to end, plus the fallback |
-| 8 Production | `adk web` loads all nine phases; eval set and deploy not executed |
+| 8 Production | `adk web` loads all nine phases and serves them; `adk eval` passes; deploy not executed |
 
 Every gap is stated in the relevant phase README rather than left implicit.

@@ -15,9 +15,10 @@ cp .env.example .env      # then paste a Gemini API key into it
 adk web agents            # every phase shows up in the dropdown
 ```
 
-Requires Python 3.10 or newer. Built and demoed on google-adk 2.5.0 with
-`gemini-3.6-flash`. That model id was chosen the hard way: see
-[docs/MODELS.md](docs/MODELS.md).
+Requires Python 3.10 or newer. Built and demoed on google-adk 2.5.0. The model
+ids default to the lite tier and are overridable from the environment, because
+model availability turned out to be the least predictable part of the whole build:
+see [docs/MODELS.md](docs/MODELS.md).
 
 **Before a live demo, enable billing on the API key.** The Gemini free tier allows
 20 requests per day per model, and one full pipeline run costs 10 to 15. That is
@@ -57,6 +58,40 @@ model call**, because the best demo is one that cannot flake:
 One more, which does spend quota because it has to: `measure_cost.py` runs the
 pipeline and reports exactly what it cost in calls and tokens, per agent and per
 model, read from ADK's own `usage_metadata`. Available from Phase 3 onward.
+
+## What each file is
+
+Every phase folder is self contained, so the same filenames recur as the project
+grows. What they mean:
+
+| File | Role | From |
+| --- | --- | --- |
+| `agent.py` | the agents and how they are wired. `root_agent` lives here | phase 0 |
+| `mock_data.py` | fake inventory, so nothing depends on wifi | phase 0 |
+| `tools.py` | the function tools | phase 1 |
+| `model.py` | model ids, retry budget and request timeout | phase 2 |
+| `session_services.py` | where state is stored, the one line swap | phase 2 |
+| `workflow_graph.py` | the same pipeline on ADK 2.5's newer graph runtime | phase 3 |
+| `resilience.py` | keeps one failing agent from cancelling the parallel fan out | phase 3 |
+| `_runner.py` | shared plumbing for the run scripts | phase 3 |
+| `weather.py` | the OpenAPI toolset, with a cached offline fallback | phase 4 |
+| `providers.py` | picks the third party model when a key is present | phase 5 |
+| `booking.py` | `book_trip` and its confirmation gate | phase 6 |
+| `remote.py` | the client half of A2A | phase 7 |
+| `*.evalset.json`, `test_config.json` | the regression suite | phase 8 |
+
+Scripts you can run directly, all `python3 -m agents.<phase>.<name>`:
+
+| Script | Does |
+| --- | --- |
+| `inspect_tool` | prints the declaration ADK generated from a docstring |
+| `show_state` | reads the trip back out of SQLite |
+| `run_cli` | talks to the concierge against the persistent session |
+| `run_pipeline` / `run_graph` | runs the pipeline on each of the two runtimes |
+| `test_budget_loop` | asserts the loop's exit condition, offline |
+| `show_models` | prints which model every agent runs on |
+| `run_booking` | drives the approval gate, `approve` or `reject` |
+| `measure_cost` | runs the pipeline and reports calls and tokens |
 
 ## Docs
 

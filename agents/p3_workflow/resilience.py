@@ -51,7 +51,7 @@ def _short_reason(error: Exception) -> str:
 
 def degrade_gracefully(
     callback_context: CallbackContext,
-    llm_request: LlmRequest,
+    llm_request: LlmRequest,  # noqa: ARG001  ADK calls this by keyword
     error: Exception,
 ) -> LlmResponse:
     """Turn a failed model call into an honest, empty result.

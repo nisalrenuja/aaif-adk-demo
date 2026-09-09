@@ -96,7 +96,12 @@ def research_flights(origin: str, dest: str, date: str, tool_context: ToolContex
 
     tool_context.state[FLIGHT_OPTIONS] = options
     tool_context.state[CHOSEN_FLIGHT] = cheapest
-    return {"status": "success", "flights": options, "chosen_flight": cheapest}
+    return {
+        "status": "success",
+        "date": date,
+        "flights": options,
+        "chosen_flight": cheapest,
+    }
 
 
 def research_hotels(city: str, tool_context: ToolContext) -> dict:

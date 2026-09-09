@@ -15,9 +15,19 @@ select = [
     "UP",   # pyupgrade: outdated syntax
     "B",    # bugbear: likely bugs
     "SIM",  # simplifiable code
+    "ARG",  # unused arguments: caught a tool advertising a parameter it ignored
+    "RET",  # return-statement consistency
+    "PIE",  # misc lint
+    "C4",   # comprehension style
+    "RUF",  # ruff's own rules, including stale noqa directives
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# These are command line demos. Printing is the entire point of them, so T201 is
+# not selected at all rather than suppressed file by file.
+
+# The offline loop test asserts, which is what a test is for.
+"agents/*/test_budget_loop.py" = ["S101"]
 # Mock inventory is a data table. One record per line is easier to read and to
 # edit than a wrapped dict, which matters more here than the column limit.
 "agents/*/mock_data.py" = ["E501"]

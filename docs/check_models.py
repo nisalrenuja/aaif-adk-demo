@@ -113,7 +113,7 @@ def _probe(client: genai.Client, model: str) -> tuple[str, str, bool]:
         )
         parts = response.candidates[0].content.parts or []
         return "ok", "", any(p.function_call for p in parts)
-    except Exception as exc:  # noqa: BLE001 - every failure mode is interesting
+    except Exception as exc:  # every failure mode here is interesting
         status, reason = _classify(exc)
         return status, reason, False
 
