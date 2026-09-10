@@ -13,6 +13,9 @@ never sees it and never tries to fill it in.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from google.adk.tools import ToolContext
 
 from .mock_data import (
@@ -28,11 +31,34 @@ from .mock_data import (
 PREFS = "preferences"
 ITINERARY = "itinerary"
 COST = "running_cost_usd"
+CHOSEN_FLIGHT = "chosen_flight"
+CHOSEN_HOTEL = "chosen_hotel"
 
 
-def _bump_cost(state, amount: float) -> float:
-    """Add to the running trip cost and return the new total."""
-    total = round(float(state.get(COST, 0)) + float(amount), 2)
+def _nights(state: Mapping[str, Any]) -> int:
+    """Nights of accommodation for the stored trip length."""
+    return max(int(state.get(PREFS, {}).get("days", 1)) - 1, 1)
+
+
+def _recompute_cost(state) -> float:
+    """Recalculate the whole trip cost from what is stored, and save it.
+
+    Deliberately recomputed from the parts rather than accumulated as things are
+    added. A model retries tool calls, and it re-runs them across turns, so an
+    incremental "add this to the total" is wrong the second time it happens: the
+    same flight gets billed twice and the traveller is quoted a number that never
+    existed. Recomputing is idempotent, so calling any tool twice is harmless.
+    """
+    flight = state.get(CHOSEN_FLIGHT) or {}
+    hotel = state.get(CHOSEN_HOTEL) or {}
+    itinerary = state.get(ITINERARY, [])
+
+    total = round(
+        float(flight.get("price_usd", 0) or 0)
+        + float(hotel.get("price_usd_per_night", 0) or 0) * _nights(state)
+        + sum(float(item["price_usd"]) for item in itinerary),
+        2,
+    )
     state[COST] = total
     return total
 
@@ -89,8 +115,8 @@ def get_flights(origin: str, dest: str, date: str, tool_context: ToolContext) ->
     cheapest = min(options, key=lambda f: f["price_usd"])
 
     state = tool_context.state
-    state["chosen_flight"] = cheapest
-    total = _bump_cost(state, cheapest["price_usd"])
+    state[CHOSEN_FLIGHT] = cheapest
+    total = _recompute_cost(state)
 
     return {
         "status": "success",
@@ -123,10 +149,10 @@ def get_hotels(city: str, max_price_usd: int, tool_context: ToolContext) -> dict
         affordable = [min(options, key=lambda h: h["price_usd_per_night"])]
 
     chosen = max(affordable, key=lambda h: h["rating"])
-    nights = max(int(state.get(PREFS, {}).get("days", 1)) - 1, 1)
+    nights = _nights(state)
 
-    state["chosen_hotel"] = chosen
-    total = _bump_cost(state, chosen["price_usd_per_night"] * nights)
+    state[CHOSEN_HOTEL] = chosen
+    total = _recompute_cost(state)
 
     return {
         "status": "success",
@@ -184,13 +210,29 @@ def add_to_itinerary(
     state = tool_context.state
 
     itinerary = list(state.get(ITINERARY, []))
-    itinerary.append({"day": day, "activity": activity, "price_usd": price_usd})
-    itinerary.sort(key=lambda item: item["day"])
-    state[ITINERARY] = itinerary
 
-    total = _bump_cost(state, price_usd)
+    # Adding the same activity to the same day twice is a retry, not a request
+    # for two visits. Silently duplicating it would inflate both the plan and
+    # the cost.
+    already = any(
+        item["day"] == int(day) and item["activity"].lower() == activity.strip().lower()
+        for item in itinerary
+    )
+    if not already:
+        itinerary.append(
+            {"day": int(day), "activity": activity, "price_usd": float(price_usd)}
+        )
+        itinerary.sort(key=lambda item: item["day"])
+        state[ITINERARY] = itinerary
 
-    return {"status": "success", "itinerary": itinerary, "running_cost_usd": total}
+    total = _recompute_cost(state)
+
+    return {
+        "status": "success",
+        "added": not already,
+        "itinerary": itinerary,
+        "running_cost_usd": total,
+    }
 
 
 def review_trip(tool_context: ToolContext) -> dict:
@@ -207,8 +249,8 @@ def review_trip(tool_context: ToolContext) -> dict:
     return {
         "status": "success",
         "preferences": state.get(PREFS),
-        "chosen_flight": state.get("chosen_flight"),
-        "chosen_hotel": state.get("chosen_hotel"),
+        "chosen_flight": state.get(CHOSEN_FLIGHT),
+        "chosen_hotel": state.get(CHOSEN_HOTEL),
         "itinerary": state.get(ITINERARY, []),
         "running_cost_usd": state.get(COST, 0),
     }

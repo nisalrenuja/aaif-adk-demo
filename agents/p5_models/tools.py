@@ -193,12 +193,18 @@ def set_itinerary_day(day: int, activity_names: list[str], tool_context: ToolCon
     options = tool_context.state.get(ACTIVITY_OPTIONS, GENERIC_ACTIVITIES)
     by_name = {a["name"].lower(): a for a in options}
 
-    chosen, unknown = [], []
+    chosen, unknown, seen = [], [], set()
     for name in activity_names:
-        found = by_name.get(name.strip().lower())
+        key = name.strip().lower()
+        found = by_name.get(key)
         if found is None:
             unknown.append(name)
+        elif key in seen:
+            # The same activity listed twice in one call is a slip, not a request
+            # to do it twice. Keeping both would double the price and the hours.
+            continue
         else:
+            seen.add(key)
             chosen.append(
                 {
                     "day": int(day),
@@ -266,7 +272,22 @@ def evaluate_budget(state: Mapping[str, Any]) -> dict:
         "activities_usd": round(activity_cost, 2),
     }
 
-    if budget and total > budget:
+    if not budget:
+        # No budget recorded, usually because save_preferences never ran. Saying
+        # "under budget" here would be a lie that reads as a pass, so the loop is
+        # allowed to end but the feedback says plainly that nothing was checked.
+        return {
+            "verdict": "under_budget",
+            "total_cost_usd": total,
+            "budget_usd": 0.0,
+            "breakdown": breakdown,
+            "feedback": (
+                f"No budget was recorded, so the trip could not be checked "
+                f"against one. It currently totals {total} USD."
+            ),
+        }
+
+    if total > budget:
         overspend = round(total - budget, 2)
         feedback = (
             f"Over budget by {overspend} USD. Total {total}, budget {budget}. "
