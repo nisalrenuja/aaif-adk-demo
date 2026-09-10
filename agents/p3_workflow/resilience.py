@@ -32,21 +32,35 @@ computed, failing loudly is correct.
 
 from __future__ import annotations
 
+import re
+
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
 from google.genai import types
 
 
 def _short_reason(error: Exception) -> str:
-    """A human sized description of what went wrong."""
+    """A human sized description of what went wrong.
+
+    The fallback matters as much as the named cases. An earlier version returned
+    just `type(error).__name__` here, so a real misconfiguration surfaced in the
+    trace as the useless word "ClientError" and looked like a flake. Anything not
+    recognised now carries the API's own message, truncated.
+    """
     text = str(error)
     if "RESOURCE_EXHAUSTED" in text or "429" in text:
         return "the model's quota was exhausted"
     if "UNAVAILABLE" in text or "503" in text:
         return "the model was temporarily overloaded"
-    if "404" in text:
+    if "404" in text or "NOT_FOUND" in text:
         return "the model id is not available on this key"
-    return type(error).__name__
+    if "DEADLINE" in text or "504" in text:
+        return "the request timed out"
+
+    # Surface the API's message rather than the exception class name.
+    match = re.search(r"'message':\s*'([^']+)'", text)
+    detail = match.group(1) if match else text.replace("\n", " ")
+    return f"{type(error).__name__}: {detail[:160]}"
 
 
 def degrade_gracefully(

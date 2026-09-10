@@ -60,6 +60,7 @@ warnings.filterwarnings(
 from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import google_search
+from google.genai import types
 
 from .model import (
     ASSEMBLER_MODEL_ID,
@@ -187,7 +188,19 @@ activity_researcher = Agent(
     ),
     # Three sources in one agent: our own function tool, a toolset generated from
     # an OpenAPI spec, and google_search which runs inside the model itself.
-    # ADK 2.5 wraps the built in tool automatically when other tools are present.
+    #
+    # Mixing a built in tool with function tools does NOT work by default. The
+    # request is rejected with
+    #   400 INVALID_ARGUMENT: Please enable
+    #   tool_config.include_server_side_tool_invocations to use Built-in tools
+    #   with Function calling.
+    # google_search runs server side, so the API needs explicit permission to
+    # report those invocations back inside the response. The agent constructs
+    # fine without this, which is why it is easy to miss: it only fails when you
+    # actually send a request.
+    generate_content_config=types.GenerateContentConfig(
+        tool_config=types.ToolConfig(include_server_side_tool_invocations=True)
+    ),
     tools=[research_activities, *build_weather_tools(), google_search],
     output_key="activity_summary",
     # Research is best effort. A transient model failure here degrades to an

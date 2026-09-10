@@ -38,9 +38,28 @@ tools=[research_activities, *build_weather_tools(), google_search]
 generated from a spec, and a capability of the model itself. That single line is
 the phase.
 
-Older ADK could not do this. A built in tool had to sit alone on its own agent, and
-mixing it with a function tool meant an `AgentTool` wrapper. ADK 2.5 wraps the
-built in tool automatically when other tools are present.
+**It does not work by default, and the way it fails is the lesson.** The agent
+constructs perfectly happily. Then the first real request comes back:
+
+```
+400 INVALID_ARGUMENT: Please enable tool_config.include_server_side_tool_invocations
+to use Built-in tools with Function calling.
+```
+
+`google_search` runs server side, inside the model, so the API needs explicit
+permission to report those invocations back inside the response. One line grants
+it:
+
+```python
+generate_content_config=types.GenerateContentConfig(
+    tool_config=types.ToolConfig(include_server_side_tool_invocations=True)
+),
+```
+
+Worth dwelling on for a second: **this cannot be caught by loading the agent.** It
+only appears when a request is actually sent. That is a general property of
+built in tools and a good argument for running every phase once before a talk
+rather than trusting that it imports.
 
 Keep that line in view, because Phase 5 breaks it apart again for a reason worth
 hearing.
@@ -82,6 +101,11 @@ python3 -m agents.p4_tools.run_pipeline "Plan me 3 days in Kandy, budget 250 USD
 ```
 
 ## Details worth knowing
+
+**A built in tool needs `include_server_side_tool_invocations` to sit beside
+function tools.** Covered above. Without it, every call from this agent fails with
+a 400 and, if a resilience callback is catching errors, it degrades quietly rather
+than crashing, which is worse: you see an empty result and no reason.
 
 **A built in tool needs a Gemini model, and this bites in Phase 5.**
 `google_search` runs inside the model rather than being sent over the wire, so it
