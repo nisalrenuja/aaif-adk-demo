@@ -19,9 +19,31 @@ argument for a better reason: different jobs genuinely want different models.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from google.adk.models import Gemini
 from google.genai import types
+
+# `docs/check_models.py --write` puts the morning's healthy model ids in this file.
+# Loading it here is what closes the loop: the script that finds out which ids still
+# have quota and the agents that run on them stop being connected by a human
+# correctly pasting four environment variables ten minutes before a talk.
+#
+# `override=False` on purpose. A variable already set in the environment wins, so
+#
+#     TRIP_ASSEMBLER_MODEL=gemini-3.8-flash python3 -m agents.p3_workflow.run_pipeline
+#
+# still does what it looks like it does. The file is a default, not an override.
+#
+# Checked in the working directory first and then at the repo root, so it works
+# both when run from the repo and when a phase folder has been copied out on its
+# own. A missing file is a no op, which is the normal case.
+_ENV_FILE = ".env.models"
+for _candidate in (Path.cwd() / _ENV_FILE, Path(__file__).resolve().parents[2] / _ENV_FILE):
+    if _candidate.is_file():
+        load_dotenv(_candidate, override=False)
+        break
 
 # All three verified working with function calling. See docs/MODELS.md.
 #

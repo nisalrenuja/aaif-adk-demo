@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .env
+.env.models
 .venv/
 venv/
 *.db

@@ -4,6 +4,7 @@ Run this the morning of the talk.
 
     python3 docs/check_models.py              # fast, one request per model
     python3 docs/check_models.py --headroom   # slower, measures remaining quota
+    python3 docs/check_models.py --write      # write the suggestion to .env.models
 
 ## Why this exists
 
@@ -23,11 +24,24 @@ progress at all, which is exactly what happened here.
 
 So the default mode is honest about what it does not know, and `--headroom`
 measures the thing you actually care about.
+
+## Why --write exists
+
+Without it this script ends by printing four environment variables for a human to
+copy into a terminal, correctly, in front of a room, ten minutes before a talk,
+having just discovered that a model died overnight. That is a bad place to put a
+manual step.
+
+`--write` puts the same four assignments in `.env.models`, which `agents/*/model.py`
+loads on import. The loop closes: detect the healthy model, use the healthy model.
+A real environment variable still wins over the file, so an inline override on the
+command line keeps working.
 """
 
 from __future__ import annotations
 
 import argparse
+import pathlib
 import time
 
 from dotenv import load_dotenv
@@ -56,6 +70,10 @@ SLOT_COST = {
     "TRIP_THIRD_MODEL": 5,
     "TRIP_SECOND_MODEL": 3,
 }
+
+# Where --write puts the assignment. `agents/*/model.py` reads this file on import,
+# and a real environment variable still takes precedence over it.
+ENV_FILE = ".env.models"
 
 # How many probe calls --headroom will spend per model before it stops counting.
 # Enough to tell "plenty" from "nearly gone" without burning the thing you are
@@ -147,6 +165,17 @@ def main() -> None:
             "model. Slower, and it consumes some of what it measures."
         ),
     )
+    parser.add_argument(
+        "--write",
+        nargs="?",
+        const=ENV_FILE,
+        metavar="PATH",
+        help=(
+            f"write the suggested assignment to {ENV_FILE} (or PATH), which "
+            "agents/*/model.py loads on import. Closes the loop between finding a "
+            "healthy model and running on it."
+        ),
+    )
     args = parser.parse_args()
 
     load_dotenv()
@@ -205,20 +234,57 @@ def main() -> None:
         print("them apart, or enable billing and stop thinking about it.")
         print()
 
-    _suggest(usable, measured=args.headroom)
+    _suggest(usable, measured=args.headroom, write=args.write)
 
 
-def _suggest(usable: list[tuple[str, int, bool]], *, measured: bool) -> None:
-    """Print an env line assigning the healthiest models to the hungriest slots."""
+def _assign(usable: list[tuple[str, int, bool]]) -> dict[str, str] | None:
+    """Hungriest slot gets the healthiest model. None when there are not four.
+
+    Pulled out of `_suggest` so that what `--write` puts in the file and what the
+    terminal prints are the same dict, not two implementations of the same idea.
+    """
     if len(usable) < 4:
+        return None
+    ranked = sorted(usable, key=lambda item: -item[1])
+    slots = sorted(SLOT_COST.items(), key=lambda item: -item[1])
+    return {slot: ranked[i][0] for i, (slot, _) in enumerate(slots)}
+
+
+def _write_env(assignment: dict[str, str], path: str) -> None:
+    """Write the assignment where `agents/*/model.py` will find it.
+
+    Rewritten in full every run rather than appended to, because the failure this
+    prevents is a stale line further up the file quietly winning.
+    """
+    slots = sorted(SLOT_COST.items(), key=lambda item: -item[1])
+    lines = [
+        "# Written by docs/check_models.py. Safe to delete, and safe to edit.",
+        "#",
+        "# agents/*/model.py loads this on import, without overriding anything",
+        "# already set in the environment, so an inline override still wins:",
+        "#",
+        "#     TRIP_ASSEMBLER_MODEL=gemini-3.8-flash \\",
+        "#         python3 -m agents.p3_workflow.run_pipeline \"...\"",
+        "#",
+        f"# Generated {time.strftime('%Y-%m-%d %H:%M')} local time.",
+        "",
+    ]
+    lines += [f"{slot}={assignment[slot]}" for slot, _ in slots]
+    pathlib.Path(path).write_text("\n".join(lines) + "\n")
+
+
+def _suggest(usable: list[tuple[str, int, bool]], *, measured: bool, write: str | None) -> None:
+    """Print an env line assigning the healthiest models to the hungriest slots."""
+    assignment = _assign(usable)
+    if assignment is None:
         print(f"Only {len(usable)} model(s) usable. A full pipeline run needs four")
         print("distinct ids with headroom. Enable billing, or wait for the daily")
         print("reset at midnight Pacific.")
+        if write:
+            print(f"\nNothing written to {write}: there is no healthy set to write.")
         return
 
-    ranked = sorted(usable, key=lambda item: -item[1])
     slots = sorted(SLOT_COST.items(), key=lambda item: -item[1])
-    assignment = {slot: ranked[i][0] for i, (slot, _) in enumerate(slots)}
     counts = {model: (n, more) for model, n, more in usable}
 
     if measured:
@@ -250,10 +316,21 @@ def _suggest(usable: list[tuple[str, int, bool]], *, measured: bool) -> None:
     for slot, cost in slots:
         print(f"  {slot}={assignment[slot]}  (needs about {cost} calls)")
     print()
+
+    if write:
+        _write_env(assignment, write)
+        print(f"Written to {write}. agents/*/model.py loads it on import, so:\n")
+        print('  python3 -m agents.p3_workflow.run_pipeline "Plan me 3 days in '
+              'Kandy, budget 250 USD"\n')
+        print("now runs on those ids with nothing to paste. Delete the file to go")
+        print("back to the defaults in model.py.")
+        return
+
     env = " \\\n  ".join(f"{slot}={assignment[slot]}" for slot, _ in slots)
     print("Copy and paste:\n")
     print(f"  {env} \\\n  python3 -m agents.p3_workflow.run_pipeline "
           '"Plan me 3 days in Kandy, budget 250 USD"')
+    print(f"\nOr run with --write to put this in {ENV_FILE} instead.")
 
 
 if __name__ == "__main__":
