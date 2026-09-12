@@ -21,8 +21,8 @@ model availability turned out to be the least predictable part of the whole buil
 see [docs/MODELS.md](docs/MODELS.md).
 
 **Before a live demo, enable billing on the API key.** The Gemini free tier allows
-20 requests per day per model, and one full pipeline run costs 10 to 15. That is
-about four runs a day, total. It is the single thing most likely to end the demo.
+20 requests per day per model, and one full pipeline run costs 17, measured. That
+is about three runs a day, total. It is the single thing most likely to end the demo.
 [docs/RUNBOOK.md](docs/RUNBOOK.md) has the rest.
 
 ## The phases

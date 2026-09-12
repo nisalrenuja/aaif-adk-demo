@@ -5,9 +5,19 @@ availability turned out to be the least predictable part of the whole build.
 
 ## What we pin
 
+The lite tier, by default, spread across four ids because the free quota is counted
+per model. Straight from `agents/*/model.py`:
+
 ```python
-MODEL = "gemini-3.6-flash"
+PRIMARY_MODEL_ID   = os.environ.get("TRIP_PRIMARY_MODEL",   "gemini-3.5-flash-lite")
+SECOND_MODEL_ID    = os.environ.get("TRIP_SECOND_MODEL",    "gemini-3.1-flash-lite")
+THIRD_MODEL_ID     = os.environ.get("TRIP_THIRD_MODEL",     "gemini-3.1-flash-lite-preview")
+ASSEMBLER_MODEL_ID = os.environ.get("TRIP_ASSEMBLER_MODEL", "gemini-3-flash-preview")
 ```
+
+Nothing here needs a large model: the agents call one tool and summarise a dict. The
+full tier ids below were verified first and are the ones to swap up to, through the
+environment, if a step genuinely struggles.
 
 ## What we found when we actually called the API
 
@@ -98,7 +108,7 @@ single "plan me 3 days in Kandy" on a free key:
 | a Phase 3 parallel fan out across three researchers | 3 at once |
 | a Phase 3 refinement loop, per iteration | 2 or more |
 
-One full pipeline run is comfortably 10 to 15 calls. At 5 per minute the run stalls
+One full pipeline run is 17 calls, measured. At 5 per minute the run stalls
 part way through and the demo dies in front of the room.
 
 ### Three ways out, in order of preference

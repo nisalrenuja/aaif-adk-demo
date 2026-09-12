@@ -8,7 +8,7 @@ visible in seconds instead.
 
 **Quota headroom.** The free tier allows 5 requests per minute *per model*. A
 parallel fan out fires three agents at once, and a refinement loop fires several
-more, so a single pipeline run is comfortably 10 to 15 calls. Pointing the three
+more, so a single pipeline run is 17 calls, measured. Pointing the three
 researchers at three different model ids roughly triples the free tier headroom,
 because the quota is counted per model.
 

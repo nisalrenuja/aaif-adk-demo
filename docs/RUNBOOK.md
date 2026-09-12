@@ -49,8 +49,8 @@ the most calls of anything in the pipeline.
 The Gemini free tier allows **20 requests per day, per model**. One full Phase 3
 pipeline run costs 17 model calls and about 24,000 tokens, measured.
 
-That means a free key gives you roughly **four full runs in a day, total**, across
-the three model ids this repo spreads across. Rehearsing in the afternoon can leave
+That means a free key gives you roughly **three full runs in a day, total**, across
+the four model ids this repo spreads across. Rehearsing in the afternoon can leave
 you with nothing for an evening slot, and the failure is a hard 429 rather than a
 slow response.
 

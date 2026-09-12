@@ -61,12 +61,16 @@ can end the demo, and no amount of code works around it. Full detail in
    stays clean on stage.
 2. **`Workflow` cannot yet be an `LlmAgent` sub agent.** So the graph variant is a
    separate root, not a swap inside the concierge.
-3. **ADK 2.5.0 defaults to `gemini-3.5-flash`.** We pin `gemini-2.5-flash` explicitly
-   in one constants module so a single edit changes every agent, and the slide names
-   the exact id that was tested.
-4. **Built in tools mix cleanly now.** ADK 2.5 auto wraps `google_search` when an
-   agent also holds function tools, so Phase 4 does not need the old AgentTool
-   workaround. Verified by construction.
+3. **ADK 2.5.0 defaults to `gemini-3.5-flash`.** Every agent names its model
+   explicitly through one constants module, so a single edit changes all of them. The
+   shipped defaults are the lite tier, `gemini-3.5-flash-lite` and friends, spread
+   across four ids because the free quota is per model. The slide names them.
+4. **Built in tools do not mix cleanly, and it only shows at request time.** An
+   agent holding `google_search` alongside function tools constructs fine and then
+   fails the first real call with `400 INVALID_ARGUMENT: Please enable
+   tool_config.include_server_side_tool_invocations`. Setting that in the agent's
+   `generate_content_config` fixes it. No AgentTool wrapper is needed, but "verified
+   by construction" was not verification: only a real request proves this.
 
 ## Repo layout
 
@@ -84,7 +88,6 @@ docs/
   PLAN.md               this file
   MODELS.md             which model ids work, and the quota walls
   RUNBOOK.md            day of the talk checklist
-  DEMO.md               presenter's guide
   check_models.py       verifies model ids and remaining quota
 README.md
 requirements.txt
@@ -114,7 +117,9 @@ Deploy: show a pre recorded terminal or a live URL, never wait on a build.
 ## Slide accuracy guards
 
 - Pin `google-adk>=2.0.0`, and say you demoed on 2.5.0.
-- Name the exact model id, `gemini-2.5-flash`, not an alias.
+- Name the exact model ids shipped as defaults, `gemini-3.5-flash-lite`,
+  `gemini-3.1-flash-lite`, `gemini-3.1-flash-lite-preview` and
+  `gemini-3-flash-preview`, never an alias.
 - Say Python 3.10 or newer.
 - State that the workflow agents are deprecated as of 2.5 and that `Workflow` is the
   forward path. Owning that beats being corrected from the audience.
@@ -127,10 +132,13 @@ the docs.
 
 **Model availability was the biggest surprise.** The pin moved from
 `gemini-2.5-flash` to `gemini-3.6-flash` after the first real request came back
-404. `docs/MODELS.md` and `docs/check_models.py` exist entirely because of this.
+404, and then down to the lite tier, `gemini-3.5-flash-lite` and friends, once a
+full run proved they handle this work. `docs/MODELS.md` and `docs/check_models.py`
+exist entirely because of this.
 
-**Quota shaped the architecture.** The three parallel researchers point at three
-different model ids because the free quota is counted per model. That started as a
+**Quota shaped the architecture.** The parallel researchers point at different
+model ids, and the assembler gets its own, because the free quota is counted per
+model. That started as a
 workaround and turned into a genuine argument for Phase 5.
 
 **Every phase gained something runnable without a model call.** `inspect_tool.py`,
