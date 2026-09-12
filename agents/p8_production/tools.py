@@ -8,7 +8,7 @@ day. The tools do every sum. That split is the reason the budget loop terminates
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 from google.adk.tools import ToolContext
 
@@ -20,6 +20,80 @@ from .mock_data import (
     GENERIC_HOTELS,
     HOTELS,
 )
+
+# --- What lives in session state -------------------------------------------
+#
+# Session state is a plain dict with string keys, which means a typo is a silent
+# empty read rather than an error: write `chosen_flights` and the presenter simply
+# renders a trip with no flight. The constants below stop that inside this file.
+#
+# They cannot stop it anywhere else, and everywhere else is where it happens. The
+# agent instructions in `agent.py` reach into state as raw text, `{hotel_options?}`,
+# and `workflow_graph.py` subscripts it directly. Neither goes through a constant.
+#
+# So the shape is written down once, here, and `tests/test_state_keys.py` asserts
+# that every placeholder in every phase's instructions names a key that exists.
+# The TypedDict is the declaration; the test is what makes it load bearing.
+
+
+class Preferences(TypedDict):
+    """What `save_preferences` records, and every later step reads."""
+
+    city: str
+    days: int
+    budget_usd: int
+    interests: list[str]
+    origin: str
+
+
+class ItineraryItem(TypedDict):
+    """One activity on one day. `set_itinerary_day` builds these."""
+
+    day: int
+    activity: str
+    price_usd: float
+    duration_hours: float
+
+
+class TripState(TypedDict, total=False):
+    """Every key this pipeline reads or writes in session state.
+
+    `total=False` because state fills in as the pipeline runs: nothing holds all of
+    these at once, and every read in the codebase is already written to tolerate a
+    missing key. The point of the type is the *vocabulary*, not the completeness.
+    """
+
+    # Written by the tools in this file.
+    preferences: Preferences
+    flight_options: list[dict]
+    hotel_options: list[dict]
+    activity_options: list[dict]
+    chosen_flight: dict
+    chosen_hotel: dict
+    itinerary: list[ItineraryItem]
+    total_cost_usd: float
+    budget_feedback: str
+    budget_status: str
+
+    # Written by ADK itself, from each agent's `output_key`.
+    flight_summary: str
+    hotel_summary: str
+    activity_summary: str
+    events_summary: str
+    draft_itinerary: str
+    budget_verdict: str
+
+    # Written by `resilience.degrade_gracefully` when a researcher's model fails.
+    degraded_agents: list[dict]
+
+    # Written by `workflow_graph.budget_gate`, which counts its own passes because
+    # a graph has no LoopAgent to do it.
+    budget_passes: int
+
+
+# The same names as strings, for the code that has to subscript state. Deriving the
+# set from the TypedDict rather than repeating it keeps the two from disagreeing.
+STATE_KEYS: frozenset[str] = frozenset(TripState.__annotations__)
 
 # State keys, in one place.
 PREFS = "preferences"
