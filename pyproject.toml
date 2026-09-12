@@ -44,3 +44,22 @@ select = [
 "agents/*/workflow_graph.py" = ["E402"]
 "agents/*/remote.py" = ["E402"]
 "local_expert_service/server.py" = ["E402"]
+
+
+# The offline test suite. `pytest` from the repo root runs everything; the three
+# subprocess tests that prove `.env.models` reaches the agents are marked slow
+# because they each pay a cold ADK import.
+#
+#     pytest                    everything, about five seconds
+#     pytest -m "not slow"      skip the subprocess handover tests
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: spawns a subprocess and pays a cold ADK import",
+]
+# ADK 2.5 emits this on import of anything agent shaped. The repo already silences
+# it in the run scripts so the stage terminal stays readable; the same applies to
+# test output, and the deprecation is documented in agents/*/agent.py.
+filterwarnings = [
+    "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
+]

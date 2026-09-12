@@ -1,8 +1,10 @@
 # Trip Planner: a Google ADK live demo
 
 A multi agent trip planner built in nine phases, one ADK concept per phase. Built
-for a live talk, so every phase runs on mock data and never depends on a live third
-party service to succeed.
+for a live talk, so no phase *needs* a live third party service to succeed. The
+inventory is mock data throughout. The one real outbound call is the weather, which
+Phase 4 fetches from open-meteo through an OpenAPI toolset and which falls back to a
+cached forecast when the network is hostile: `USE_LIVE_WEATHER` in `weather.py`.
 
 ![Architecture](docs/architecture.png)
 
@@ -13,6 +15,14 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env      # then paste a Gemini API key into it
 adk web agents            # every phase shows up in the dropdown
+```
+
+Nothing above is needed to run the tests. `pytest` from the repo root exercises the
+tools, the budget arithmetic, the one pass guard and the phase sync, offline, with
+no API key and no quota:
+
+```bash
+pytest                    # about five seconds
 ```
 
 Requires Python 3.10 or newer. Built and demoed on google-adk 2.5.0. The model
@@ -74,6 +84,7 @@ grows. What they mean:
 | `session_services.py` | where state is stored, the one line swap | phase 2 |
 | `workflow_graph.py` | the same pipeline on ADK 2.5's newer graph runtime | phase 3 |
 | `resilience.py` | keeps one failing agent from cancelling the parallel fan out | phase 3 |
+| `one_pass.py` | makes the assembler's single pass structural, not a request | phase 3 |
 | `_runner.py` | shared plumbing for the run scripts | phase 3 |
 | `weather.py` | the OpenAPI toolset, with a cached offline fallback | phase 4 |
 | `providers.py` | picks the third party model when a key is present | phase 5 |
@@ -94,6 +105,33 @@ Scripts you can run directly, all `python3 -m agents.<phase>.<name>`:
 | `run_booking` | drives the approval gate, `approve` or `reject` |
 | `measure_cost` | runs the pipeline and reports calls and tokens |
 
+Scripts at the repo root, run with `python3`:
+
+| Script | Does |
+| --- | --- |
+| `scripts/sync_phases.py` | reports, and with `--write` fixes, drift between the copied files |
+| `docs/check_models.py` | which model ids work today, and with `--write` puts them where the agents read them |
+
+## Tests
+
+`pytest` from the repo root. No API key, no quota, no network, about five seconds.
+
+| File | Pins |
+| --- | --- |
+| `tests/test_tools.py` | the arithmetic and the edge cases: nights versus days, de-duplication, the unknown name and no origin paths, the zero budget branch |
+| `tests/test_one_pass.py` | the assembler cannot rewrite the plan mid pass, and the next pass still starts clean |
+| `tests/test_state_keys.py` | every `{placeholder?}` in every instruction names a key that exists in `TripState` |
+| `tests/test_phase_sync.py` | the files copied across phases are still byte identical |
+| `tests/test_runtimes_agree.py` | the classic pipeline and the graph run the same agents and total the trip with the same code |
+| `tests/test_check_models.py` | a written `.env.models` actually reaches the agents, and a real environment variable still beats it |
+
+The tools are dict in, dict out with state passed explicitly, which is what makes
+this possible without a model. That is the same argument `test_budget_loop.py`
+makes on stage, applied to the rest of the file.
+
+When `test_phase_sync.py` fails, fix the source phase and run
+`python3 scripts/sync_phases.py --write`.
+
 ## Docs
 
 | File | What it is |
@@ -101,7 +139,8 @@ Scripts you can run directly, all `python3 -m agents.<phase>.<name>`:
 | [docs/PLAN.md](docs/PLAN.md) | the build plan, verified environment and per phase third party cost |
 | [docs/MODELS.md](docs/MODELS.md) | which model ids actually work, and the quota walls |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | day of the talk checklist and the failure table |
-| [docs/check_models.py](docs/check_models.py) | which model ids work and how much quota is left; run `--headroom` the morning of |
+| [docs/RUNTIMES.md](docs/RUNTIMES.md) | classic workflow agents or the graph: which to build on |
+| [docs/check_models.py](docs/check_models.py) | which model ids work and how much quota is left; run `--headroom` the morning of, then `--write` to run on what it found |
 
 ## Findings worth a slide
 
@@ -118,3 +157,7 @@ Things this build ran into that are not in the getting started guide:
   startup without it.
 - A transient 503 with the default retry budget stalls for five minutes with no
   output. Every agent here bounds it to two attempts.
+- A `Workflow` node built and left out of the edge list is **not an error**. The
+  graph validates, runs, and quietly does less. Four phases here shipped an events
+  researcher the graph never called, and the only symptom was an empty variable in
+  a prompt. `tests/test_runtimes_agree.py` now fails on it.
