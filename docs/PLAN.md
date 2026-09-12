@@ -88,16 +88,26 @@ docs/
   PLAN.md               this file
   MODELS.md             which model ids work, and the quota walls
   RUNBOOK.md            day of the talk checklist
-  check_models.py       verifies model ids and remaining quota
+  RUNTIMES.md           classic workflow agents or the graph: which to build on
+  check_models.py       verifies model ids and remaining quota, --write applies them
+tests/                  the offline suite, `pytest` from the repo root
+scripts/
+  sync_phases.py        finds and fixes drift between the copied phase files
 README.md
 requirements.txt
-pyproject.toml          ruff configuration
+pyproject.toml          ruff and pytest configuration
 .env.example
 ```
 
 Each phase package is deliberately self contained, duplicated mock data included.
 A person can copy one folder out of the repo and it runs. That matters more for a
 teaching repo than avoiding duplication.
+
+The cost of that choice is drift: seven files exist as byte identical copies in up
+to six folders, and a fix to one of them has to land in all of them. Rather than
+give up the property, `scripts/sync_phases.py` propagates from the phase a file
+first appears in, and `tests/test_phase_sync.py` fails the suite when a copy has
+drifted. The duplication is deliberate; the divergence would not have been.
 
 Run every phase with a single command from the repo root:
 
