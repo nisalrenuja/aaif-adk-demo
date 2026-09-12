@@ -92,6 +92,7 @@ from google.adk import Agent
 from google.adk.agents import LoopAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import google_search
 
+from .one_pass import enforce_one_pass, start_new_pass
 from .providers import (
     ASSEMBLER_MODEL_ID,
     PRIMARY_MODEL_ID,
@@ -306,12 +307,11 @@ itinerary_assembler = Agent(
         "you and will tell you what to cut, and cutting a good plan gives a better "
         "trip than padding a cheap one.\n"
         "\n"
-        "Make exactly one pass and then stop. One choose_hotel call, one "
-        "set_itinerary_day call per day, then report. Do not re-check your own "
-        "arithmetic and do not revise a choice you already made in this pass. The "
-        "budget check runs after you and it is the only thing that decides whether "
-        "the plan is affordable. Second guessing yourself here costs a model call "
-        "and hides the refinement step that follows.\n"
+        "Make exactly one pass: one choose_hotel call, one set_itinerary_day call "
+        "per day, then report. This one is enforced rather than asked for, so a "
+        "repeat call comes back skipped and changes nothing. The budget check runs "
+        "after you and it is the only thing that decides whether the plan is "
+        "affordable. If it says over budget, you get another pass to cut.\n"
         "\n"
         "Do this every time you run:\n"
         "1. Call choose_hotel with one name from the shortlist.\n"
@@ -332,6 +332,11 @@ itinerary_assembler = Agent(
     ),
     tools=[choose_hotel, set_itinerary_day],
     output_key="draft_itinerary",
+    # One pass, enforced. `start_new_pass` clears the ledger at the top of every
+    # turn, so the next loop iteration can still pick a cheaper hotel; within a
+    # turn `enforce_one_pass` refuses the second call. See one_pass.py.
+    before_agent_callback=start_new_pass,
+    before_tool_callback=enforce_one_pass,
 )
 
 budget_checker = Agent(
