@@ -25,6 +25,9 @@ Why the graph is genuinely better once you need it:
 - **Routing is data.** `{"again": ..., "done": ...}` is an edge map you can read,
   not a control flow rule buried in an agent class.
 
+Which of the two to actually build on is a real question with a real answer, and
+it is not "the newer one". See docs/RUNTIMES.md.
+
 Run it with:
 
     python3 -m agents.p3_workflow.run_graph "Plan me 3 days in Kandy, budget 250"
@@ -125,9 +128,15 @@ root_agent = Workflow(
     name="trip_graph",
     description="The Phase 3 trip pipeline expressed as a graph.",
     edges=[
-        # preferences, then three researchers at once, then wait for all three,
+        # preferences, then every researcher at once, then wait for all of them,
         # then assemble, then the gate.
-        (START, _preferences, (_flights, _hotels, _activities),
+        #
+        # Every researcher that agent.py fans out to has to be in this tuple. A node
+        # built above and left out here is not an error: the graph simply runs
+        # without it, and the only symptom is an empty {events_summary?} in the
+        # assembler's prompt. tests/test_runtimes_agree.py pins the two lists
+        # together so the runtimes cannot drift apart again.
+        (START, _preferences, (_flights, _hotels, _activities, _events),
          research_complete, _assemble, budget_gate),
         # The loop back, and the way out. Routing as data.
         (budget_gate, {"again": _assemble, "done": _present}),

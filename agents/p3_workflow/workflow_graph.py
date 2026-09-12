@@ -25,6 +25,9 @@ Why the graph is genuinely better once you need it:
 - **Routing is data.** `{"again": ..., "done": ...}` is an edge map you can read,
   not a control flow rule buried in an agent class.
 
+Which of the two to actually build on is a real question with a real answer, and
+it is not "the newer one". See docs/RUNTIMES.md.
+
 Run it with:
 
     python3 -m agents.p3_workflow.run_graph "Plan me 3 days in Kandy, budget 250"
